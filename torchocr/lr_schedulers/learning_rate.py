@@ -12,9 +12,9 @@ from .builder import LR_SCHEDULER
 @LR_SCHEDULER.register_module()
 class StepLR(object):
     # 等间隔调整学习率 StepLR
-    def __init__(self, params):
-        self.step_size = params['step_size']
-        self.gamma = params['gamma']
+    def __init__(self, step_size, gamma, **kwargs):
+        self.step_size = step_size
+        self.gamma = gamma
 
     def __call__(self, optimizer):
         scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=self.step_size, gamma=self.gamma)
@@ -24,9 +24,9 @@ class StepLR(object):
 @LR_SCHEDULER.register_module()
 class MultiStepLR(object):
     # 按需调整学习率 MultiStepLR
-    def __init__(self, params):
-        self.gamma = params['gamma']
-        self.milestones = params['milestones']
+    def __init__(self, gamma, milestones, **kwargs):
+        self.gamma = gamma
+        self.milestones = milestones
 
     def __call__(self, optimizer):
         # 基于LambdaLR
@@ -39,10 +39,10 @@ class MultiStepLR(object):
 @LR_SCHEDULER.register_module()
 class MultiStepWarmup(object):
     # 按需调整学习率 MultiStepLR + WarmUp
-    def __init__(self, params):
-        self.gamma = params['gamma']
-        self.milestones = params['milestones']
-        self.warm_up_epochs = params['warm_up_epochs']
+    def __init__(self, gamma, milestones, warm_up_epochs, **kwargs):
+        self.gamma = gamma
+        self.milestones = milestones
+        self.warm_up_epochs = warm_up_epochs
 
     def __call__(self, optimizer):
         lr_lambda = lambda epoch: (epoch + 1) / self.warm_up_epochs if epoch <= self.warm_up_epochs \
@@ -55,7 +55,7 @@ class MultiStepWarmup(object):
 class CosineAnnealingLR(object):
     # 以余弦函数为周期，并在每个周期最大值时重新设置学习率。
     # 以初始学习率为最大学习率，以 2∗Tmax 为周期，在一个周期内先下降，后上升。
-    def __init__(self, T_max, eta_min):
+    def __init__(self, T_max, eta_min, **kwargs):
         self.T_max = T_max
         self.eta_min = eta_min
 
@@ -67,7 +67,7 @@ class CosineAnnealingLR(object):
 @LR_SCHEDULER.register_module()
 class CosineWarmup(object):
     # CosineAnnealingLR+Warmup
-    def __init__(self, warm_up_epochs, epochs):
+    def __init__(self, warm_up_epochs, epochs, **kwargs):
         self.warm_up_epochs = warm_up_epochs
         self.epochs = epochs
 

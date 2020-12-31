@@ -6,42 +6,45 @@ import torch
 
 
 @OPTIMIZER.register_module()
-class AdamDecay(object):
-    def __init__(self, params):
-        self.weight_decay = params['weight_decay']
-        self.momentum = params['momentum']
-        self.beta1 = params['beta1']
-        self.beta2 = params['beta2']
+class Adam(object):
+    def __init__(self, weight_decay, momentum, beta1, beta2, lr, **kwargs):
+        self.weight_decay = weight_decay
+        self.momentum = momentum
+        self.beta1 = beta1
+        self.beta2 = beta2
+        self.lr = lr
 
-    def __call__(self, model, lr):
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr,
+    def __call__(self, model):
+        optimizer = torch.optim.Adam(model.parameters(), lr=self.lr,
                                      betas=(self.beta1, self.beta2),
                                      weight_decay=self.weight_decay)
         return optimizer
 
 
 @OPTIMIZER.register_module()
-class SGDDecay(object):
-    def __init__(self, params):
-        self.weight_decay = params['weight_decay']
-        self.momentum = params['momentum']
+class SGD(object):
+    def __init__(self, weight_decay, momentum, lr, **kwargs):
+        self.weight_decay = weight_decay
+        self.momentum = momentum
+        self.lr = lr
 
-    def __call__(self, model, lr):
-        optimizer = torch.optim.SGD(model.parameters(), lr=lr,
+    def __call__(self, model):
+        optimizer = torch.optim.SGD(model.parameters(), lr=self.lr,
                                     momentum=self.momentum,
                                     weight_decay=self.weight_decay)
         return optimizer
 
 
 @OPTIMIZER.register_module()
-class RMSPropDecay(object):
-    def __init__(self, params):
-        self.alpha = params['alpha']
-        self.weight_decay = params['weight_decay']
-        self.momentum = params['momentum']
+class RMSP(object):
+    def __init__(self, alpha, weight_decay, momentum, lr, **kwargs):
+        self.alpha = alpha
+        self.weight_decay = weight_decay
+        self.momentum = momentum
+        self.lr = lr
 
-    def __call__(self, model, lr):
-        optimizer = torch.optim.RMSprop(model.parameters(), lr=lr,
+    def __call__(self, model):
+        optimizer = torch.optim.RMSprop(model.parameters(), lr=self.lr,
                                         alpha=self.alpha,
                                         weight_decay=self.weight_decay,
                                         momentum=self.momentum)

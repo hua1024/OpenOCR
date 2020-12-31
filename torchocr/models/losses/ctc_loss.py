@@ -5,10 +5,10 @@
 import torch
 import torch.nn as nn
 
-from ..builder import LOSS
+from ..builder import LOSSES
 
 
-@LOSS.register_module()
+@LOSSES.register_module()
 class CTCLoss(nn.Module):
     def __init__(self, zero_infinity=True, blank=0, reduction='mean'):
         """torch 内置ctc loss的API使用

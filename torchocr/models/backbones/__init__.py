@@ -4,7 +4,11 @@
 
 from .rec_densenet import RecDenseNet
 from .rec_resnet import RecResNet
+from .det_resnet import DetResNet
+from .det_vgg import PixelVGG
 
 __all__ = [
-    'RecDenseNet','RecResNet'
+    'RecDenseNet', 'RecResNet',
+    'DetResNet',
+    'PixelVGG'
 ]

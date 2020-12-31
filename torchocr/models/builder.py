@@ -5,12 +5,12 @@
 import torch.nn as nn
 from ..utils.registry import (Registry, build_from_cfg)
 
-LOSS = Registry('loss')
-BACKBONE = Registry('backbone')
-HEAD = Registry('head')
-DETECTION = Registry('detection')
-RECOGNITION = Registry('recognition')
-NECK = Registry('neck')
+LOSSES = Registry('loss')
+BACKBONES = Registry('backbone')
+HEADS = Registry('head')
+DETECTIONS = Registry('detection')
+RECOGNITIONS = Registry('recognition')
+NECKS = Registry('neck')
 
 
 def build(cfg, registry, default_args=None):
@@ -24,24 +24,24 @@ def build(cfg, registry, default_args=None):
 
 
 def build_loss(cfg):
-    return build(cfg, LOSS)
+    return build(cfg, LOSSES)
 
 
 def build_backbone(cfg):
-    return build(cfg, BACKBONE)
+    return build(cfg, BACKBONES)
 
 
 def build_head(cfg):
-    return build(cfg, HEAD)
+    return build(cfg, HEADS)
 
 
 def build_neck(cfg):
-    return build(cfg, NECK)
+    return build(cfg, NECKS)
 
 
 def build_det(cfg):
-    return build(cfg, DETECTION)
+    return build(cfg, DETECTIONS)
 
 
 def build_rec(cfg):
-    return build(cfg, RECOGNITION)
+    return build(cfg, RECOGNITIONS)

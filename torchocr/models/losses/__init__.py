@@ -3,8 +3,9 @@
 # @Auto   : zzf-jeff
 
 from .ctc_loss import CTCLoss
-
+from .db_loss import DBLoss
 
 __all__ = [
     'CTCLoss',
+    'DBLoss'
 ]

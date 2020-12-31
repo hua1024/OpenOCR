@@ -11,12 +11,9 @@
 import torch
 import torch.nn as nn
 
-from ..builder import BACKBONE
-from .base_backbone import BaseBackbone
+from ..builder import BACKBONES
+from .base import BaseBackbone
 
-__all__ = [
-    "RecResNet"
-]
 
 
 # conv+bn+relu
@@ -80,9 +77,6 @@ class BasicBlock(nn.Module):
         return self.relu(y)
 
 
-# 用于ResNet50,101和152的残差块，用的是1x1+3x3+1x1的卷积
-# 这里大部分复现都是将放在第一个卷积的下采样放到了第二个卷积上，实测确实效果好很多，这里默认修改
-
 class BottleneckBlock(nn.Module):
     expansion = 4
 
@@ -106,7 +100,7 @@ class BottleneckBlock(nn.Module):
         return self.relu(y)
 
 
-@BACKBONE.register_module()
+@BACKBONES.register_module()
 class RecResNet(BaseBackbone):
     arch_settings = {
         18: (BasicBlock, (2, 2, 2, 2)),
@@ -121,9 +115,7 @@ class RecResNet(BaseBackbone):
         self.in_channels = 64
         self.block = RecResNet.arch_settings[depth][0]
         self.num_block = RecResNet.arch_settings[depth][1]
-        # padding = 3 才能输出原论文的112
-        # self.conv1 = ConvBnRelu(in_channels=in_channels, out_channels=64, kernel_size=7, padding=3, stride=2,
-        #                         is_relu=True)
+
         self.conv1 = nn.Sequential(
             ConvBnRelu(in_channels=in_channels, out_channels=32, kernel_size=3, stride=2, padding=1,
                        is_relu=True),
@@ -141,6 +133,7 @@ class RecResNet(BaseBackbone):
         self.conv5_x = self._make_layer(block=self.block, out_channels=512, num_blocks=self.num_block[3], stride=(2, 1))
         # self.avg_pool = nn.AdaptiveAvgPool2d((1, 1))
         # self.fc = nn.Linear(512 * self.block.expansion, num_classes)
+        # self.out = nn.MaxPool2d(kernel_size=2, stride=2, padding=0)
 
     def _make_layer(self, block, out_channels, num_blocks, stride):
         '''
@@ -165,7 +158,5 @@ class RecResNet(BaseBackbone):
         out = self.conv3_x(out)
         out = self.conv4_x(out)
         out = self.conv5_x(out)
-        # out = self.avg_pool(x5)
-        # out = out.view(out.size(0), -1)
-        # out = self.fc(out)
+        # out = self.out(out)
         return out

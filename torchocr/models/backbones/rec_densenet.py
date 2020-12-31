@@ -12,10 +12,10 @@
 '''
 import torch
 import torch.nn as nn
-from ..builder import BACKBONE
+from ..builder import BACKBONES
 import torch.nn.functional as F
 
-from .base_backbone import BaseBackbone
+from .base import BaseBackbone
 from collections import OrderedDict
 
 __all__ = [
@@ -67,7 +67,7 @@ class _DenseBlock(nn.Sequential):
             self.add_module('denselayer%d' % (i + 1), layer)
 
 
-@BACKBONE.register_module()
+@BACKBONES.register_module()
 class RecDenseNet(BaseBackbone):
     arch_settings = {
         121: (32, [6, 12, 24, 16]),

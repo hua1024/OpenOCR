@@ -57,6 +57,8 @@ class Registry:
             module_name = module_class.__name__
         if not force and module_name in self._module_dict:
             raise KeyError('{} is already registered in {}'.format(module_name, self.name))
+
+        ## key(str)-->value(类)
         self._module_dict[module_name] = module_class
 
     def deprecated_register_module(self, cls=None, force=False):

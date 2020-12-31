@@ -19,5 +19,5 @@ def build(cfg, registry, default_args=None):
         return build_from_cfg(cfg, registry, default_args)
 
 
-def build_optimizer(cfg):
-    return build(cfg, OPTIMIZER)
+def build_optimizer(cfg,model):
+    return build(cfg, OPTIMIZER)(model)
