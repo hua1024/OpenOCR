@@ -14,8 +14,10 @@ class Reshape(nn.Module):
     def forward(self, x):
         b, c, h, w = x.shape
         assert h == 1, "the height of conv must be 1"
-        x = x.squeeze(2)
-        x = x.permute(2, 0, 1)  # [w,b,c]
+        # x = x.squeeze(2)
+        # x = x.permute(2, 0, 1)  # [w,b,c]
+        x = x.reshape(b, c, h * w)
+        x = x.permute((0, 2, 1))  # (NTC)(batch, width, channel)s
         return x
 
 # 是否加入dropout
@@ -35,7 +37,6 @@ class EncodeWithLSTM(nn.Module):
         super(EncodeWithLSTM, self).__init__()
         self.reshape = Reshape()
         self.num_lstm = num_lstm
-        # self.out_channels = hidden_channel * 2
         self.lstm = BiLSTM(in_channels, hidden_channel, num_lstm)
 
     def forward(self, x):

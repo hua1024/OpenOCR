@@ -134,10 +134,6 @@ class RecDenseNet(BaseBackbone):
             elif isinstance(m, nn.Linear):
                 nn.init.constant_(m.bias, 0)
 
-    # def init_weights(self, pretrained=None):
-    #     super(RecDenseNet, self).init_weights(pretrained)
-    #     print('s')
-
     def forward(self, x):
         features = self.features(x)
         return features

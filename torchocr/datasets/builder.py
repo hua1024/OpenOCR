@@ -3,17 +3,14 @@
 # @Auto   : zzf-jeff
 
 
-
 import torch
 import torch.nn as nn
 import os
 from collections import defaultdict
-
 from torch.utils.data import DataLoader
 from torchocr.utils.registry import (build_from_cfg, Registry)
 
-REC_DATASET = Registry('rec_dataset')
-DET_DATASET = Registry('det_dataset')
+DATASET = Registry('dataset')
 PIPELINES = Registry('pipeline')
 
 
@@ -26,10 +23,8 @@ def build(cfg, registry, default_args=None):
     else:
         return build_from_cfg(cfg, registry, default_args)
 
-def build_rec_dataloader():
-    pass
 
-def build_det_dataloader(dataset,data,shuffle=True,**kwargs):
+def build_dataloader(dataset, data, shuffle=True, **kwargs):
     """Build PyTorch DataLoader. 当前不考虑dist的情况
 
     :param dataset:
@@ -45,30 +40,30 @@ def build_det_dataloader(dataset,data,shuffle=True,**kwargs):
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=shuffle,
-        collate_fn=collate,
+        # collate_fn=collate,
         pin_memory=False,
         drop_last=True,
         **kwargs)
     return data_loader
 
+
+## 合并同batch间不一样的shape
+# todo:还是固定在不同的dataloader里面
 def collate(batch):
-    if len(batch)==0:
+    if len(batch) == 0:
         return None
     clt = defaultdict(list)
-    for i,dic in enumerate(batch):
+    for i, dic in enumerate(batch):
         clt['idx'].append(torch.tensor(i))
-        for k,v in dic.items():
+        for k, v in dic.items():
             clt[k].append(v)
-
-    for k,v in clt.items():
-        if isinstance(clt[k][0],torch.Tensor):
+    for k, v in clt.items():
+        if isinstance(clt[k][0], (torch.Tensor)):
             clt[k] = torch.stack(v, 0)
-    # collate = default_collate(batch)
     return clt
 
-def build_rec_dataset(cfg):
-    return build(cfg, REC_DATASET)
+
+def build_dataset(cfg):
+    return build(cfg, DATASET)
 
 
-def build_det_dataset(cfg):
-    return build(cfg, DET_DATASET)

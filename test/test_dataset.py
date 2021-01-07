@@ -11,7 +11,7 @@ import torch
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from torchocr.utils.vis import show_img
-from torchocr.models import build_det
+from torchocr.models import build_det, build_loss
 from torchocr.optimizers import build_optimizer
 from torchocr.lr_schedulers import build_lr_scheduler
 
@@ -40,9 +40,6 @@ db_model = dict(
         in_channels=256,
         k=50
     ),
-    loss=dict(
-        type='DBLoss',
-    ),
     postprocess=dict(
         type='DBPostProcess'
     )
@@ -68,7 +65,6 @@ data_cfg = dict(
     )
 )
 
-
 lr = dict(
     type='StepLR',
     step_size=10,
@@ -77,24 +73,84 @@ lr = dict(
 
 optimizer = dict(type='SGD', lr=0.001, momentum=0.99, weight_decay=5e-4)  # 优化器 默认SGD
 
-
-
 device = torch.device('cuda:0')
 det_model = build_det(cfg=db_model)
 print(det_model)
 det_model = det_model.to(device)
 
-optimizer = build_optimizer(optimizer,det_model)
-lr_scheduler = build_lr_scheduler(lr)(optimizer)
+optimizer = build_optimizer(optimizer, det_model)
+lr_scheduler = build_lr_scheduler(lr, optimizer)
 
 det_model.train()
 
 dataset = build_det_dataset(cfg=data_cfg)
-train_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=True, num_workers=0)
 
+from collections import defaultdict
+
+
+def collate(batch):
+    ## 对于分割等有多个map图的,没有totensor,也要stack
+    if len(batch) == 0:
+        return None
+    clt = defaultdict(list)
+    for i, dic in enumerate(batch):
+        clt['idx'].append(torch.tensor(i))
+        for k, v in dic.items():
+            clt[k].append(v)
+
+    for k, v in clt.items():
+        if isinstance(clt[k][0], (torch.Tensor)):
+            clt[k] = torch.stack(v, 0)
+
+    # collate = default_collate(batch)
+    return clt
+
+
+import numpy as np
+from PIL import Image
+
+
+class DetCollectFN:
+    def __init__(self, *args, **kwargs):
+        pass
+
+    def __call__(self, batch):
+        data_dict = OrderedDict()
+        to_tensor_keys = []
+        for sample in batch:
+            for k, v in sample.items():
+                if k not in data_dict:
+                    data_dict[k] = []
+                if isinstance(v, (np.ndarray, torch.Tensor, Image.Image)):
+                    if k not in to_tensor_keys:
+                        to_tensor_keys.append(k)
+                data_dict[k].append(v)
+        print(to_tensor_keys)
+        for k in to_tensor_keys:
+            data_dict[k] = torch.stack(data_dict[k], 0)
+        return data_dict
+
+
+
+def collate_fn(batch):
+    imgs = []
+    heat_maps = []
+    for img, heat_map in batch:
+        #img = img.transpose((2, 0, 1))  # 通道前置
+        img = img[np.newaxis, ...]
+        imgs.append(img[np.newaxis, :, :, :])
+        heat_maps.append(heat_map[np.newaxis, :, :])
+    return np.concatenate(imgs, axis=0), np.concatenate(heat_maps, axis=0)
+
+
+
+train_loader = DataLoader(dataset=dataset, batch_size=4, shuffle=True, num_workers=0, drop_last=True,
+                          collate_fn=collate)
 
 from collections import OrderedDict
 import torch.distributed as dist
+
+
 def parse_losses(losses):
     log_vars = OrderedDict()
     for loss_name, loss_value in losses.items():
@@ -111,8 +167,14 @@ def parse_losses(losses):
 
     return loss, log_vars
 
+
+loss = dict(type='DBLoss')
+
+criterion = build_loss(loss)
+
 for idx in range(100):
     for i, data in enumerate(train_loader):
+
 
         for key, value in data.items():
             if value is not None:
@@ -120,7 +182,11 @@ for idx in range(100):
                     data[key] = value.to(device)
 
         optimizer.zero_grad()
-        loss_dict = det_model(data)
+        pred = det_model(data, return_loss=True)
+
+
+        loss_dict = criterion(pred, data)
+
         loss_dict['loss'].backward()
         optimizer.step()
         loss, log_vars = parse_losses(loss_dict)

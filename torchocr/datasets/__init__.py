@@ -2,14 +2,26 @@
 # @Time   : 2020/12/1 11:05
 # @Auto   : zzf-jeff
 
-from .det import *
-from .transforms import *
 
-from .builder import (DET_DATASET, build_det_dataset, build_rec_dataloader)
-from .builder import (REC_DATASET, build_rec_dataset, build_det_dataloader)
+from .txt_reader import *
+from .builder import (build_dataset, build_dataloader)
+from .pipelines.transforms import *
+from .pipelines.converters.ctc_converter import *
+from .pipelines.img_aug.resize_img import *
+from .pipelines.img_aug.iaa_augment import *
+from .pipelines.segment_map.make_border_map import *
+from .pipelines.segment_map.make_shrink_map import *
+from .pipelines.img_aug.random_crop import *
 
 __all__ = [
-    'DET_DATASET', 'build_det_dataset','build_det_dataloader',
-    'REC_DATASET', 'build_rec_dataset','build_det_dataloader',
-    'ToTensor','Normalize'
+    'DATASET', 'build_dataset', 'build_dataloader',
+    'ToTensor', 'Normalize', 'RecResizeImg', 'CTCLabelEncode', 'KeepKeys',
+    'EastRandomCropData',
+    'RecResizeImg',
+    'DetResizeForTest',
+    'IaaAugment',
+    'MakeShrinkMap',
+    'MakeBorderMap',
+    'NormalizeImage',
+    'ToCHWImage'
 ]

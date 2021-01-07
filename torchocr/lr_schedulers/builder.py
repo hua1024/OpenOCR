@@ -19,5 +19,5 @@ def build(cfg, registry, default_args=None):
         return build_from_cfg(cfg, registry, default_args)
 
 
-def build_lr_scheduler(cfg):
-    return build(cfg, LR_SCHEDULER)
+def build_lr_scheduler(cfg, optimizer):
+    return build(cfg, LR_SCHEDULER)(optimizer)

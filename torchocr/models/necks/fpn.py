@@ -31,14 +31,6 @@ class ConvBnRelu(nn.Module):
         x = self.relu(x)
         return x
 
-    # def weights_init(self, m):
-    #     classname = m.__class__.__name__
-    #     if classname.find('Conv') != -1:
-    #         nn.init.kaiming_normal_(m.weight.data)
-    #     elif classname.find('BatchNorm') != -1:
-    #         m.weight.data.fill_(1.)
-    #         m.bias.data.fill_(1e-4)
-
 
 @NECKS.register_module()
 class DB_FPN(nn.Module):
@@ -56,16 +48,6 @@ class DB_FPN(nn.Module):
         self.out4 = ConvBnRelu(out_channels, inner_channels, kernel_size=3, stride=1, padding=1)
         self.out3 = ConvBnRelu(out_channels, inner_channels, kernel_size=3, stride=1, padding=1)
         self.out2 = ConvBnRelu(out_channels, inner_channels, kernel_size=3, stride=1, padding=1)
-
-        # init weights ，目前还没验证
-        # self.in5.apply(self.weights_init)
-        # self.in4.apply(self.weights_init)
-        # self.in3.apply(self.weights_init)
-        # self.in2.apply(self.weights_init)
-        # self.out5.apply(self.weights_init)
-        # self.out4.apply(self.weights_init)
-        # self.out3.apply(self.weights_init)
-        # self.out2.apply(self.weights_init)
 
     def forward(self, x):
         c2, c3, c4, c5 = x
@@ -122,16 +104,6 @@ class PSE_FPN(nn.Module):
         self.out3 = ConvBnRelu(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.out2 = ConvBnRelu(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
 
-        # init weights ，目前还没验证
-        # self.in5.apply(self.weights_init)
-        # self.in4.apply(self.weights_init)
-        # self.in3.apply(self.weights_init)
-        # self.in2.apply(self.weights_init)
-        # self.out5.apply(self.weights_init)
-        # self.out4.apply(self.weights_init)
-        # self.out3.apply(self.weights_init)
-        # self.out2.apply(self.weights_init)
-
     def forward(self, x):
         c2, c3, c4, c5 = x
         in5 = self.in5(c5)
@@ -161,10 +133,3 @@ class PSE_FPN(nn.Module):
         # return F.upsample(x, size=(H, W), mode='nearest') + y
         return F.interpolate(x, size=(H, W), mode='nearest') + y
 
-    # def weights_init(self, m):
-    #     classname = m.__class__.__name__
-    #     if classname.find('Conv') != -1:
-    #         nn.init.kaiming_normal_(m.weight.data)
-    #     elif classname.find('BatchNorm') != -1:
-    #         m.weight.data.fill_(1.)
-    #         m.bias.data.fill_(1e-4)

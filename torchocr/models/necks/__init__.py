@@ -9,7 +9,8 @@ from .unet_encoder import PixelWithUnet
 
 __all__ = [
     'EncodeWithLSTM',
-    'DB_FPN', 'PSE_FPN',
+    'DB_FPN',
+    'PSE_FPN',
     'FPEM_FFM',
     'PixelWithUnet'
 ]

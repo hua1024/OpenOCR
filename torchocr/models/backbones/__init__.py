@@ -8,7 +8,8 @@ from .det_resnet import DetResNet
 from .det_vgg import PixelVGG
 
 __all__ = [
-    'RecDenseNet', 'RecResNet',
+    'RecDenseNet',
     'DetResNet',
-    'PixelVGG'
+    'PixelVGG',
+    'RecResNet',
 ]
