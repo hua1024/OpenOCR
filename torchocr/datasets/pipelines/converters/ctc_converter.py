@@ -50,6 +50,8 @@ class CTCLabelEncode(BaseEncodeConverter):
             return None
         return text_list
 
+
+
     def __call__(self, data):
         text = data['label']
         text = self.encode(text)

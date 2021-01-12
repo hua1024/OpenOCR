@@ -24,7 +24,7 @@ def build(cfg, registry, default_args=None):
         return build_from_cfg(cfg, registry, default_args)
 
 
-def build_dataloader(dataset, data, shuffle=True, **kwargs):
+def build_dataloader(dataset, data, rank=-1,shuffle=True, **kwargs):
     """Build PyTorch DataLoader. 当前不考虑dist的情况
 
     :param dataset:
@@ -35,12 +35,15 @@ def build_dataloader(dataset, data, shuffle=True, **kwargs):
     """
     batch_size = data.batch_size
     num_workers = min([os.cpu_count() // data.workers_per_gpu, batch_size if batch_size > 1 else 0, 8])
+    num_workers = data.num_workers
+    sampler = torch.utils.data.distributed.DistributedSampler(dataset) if rank != -1 else None
     data_loader = DataLoader(
         dataset,
         batch_size=batch_size,
         num_workers=num_workers,
         shuffle=shuffle,
         # collate_fn=collate,
+        sampler=sampler,
         pin_memory=False,
         drop_last=True,
         **kwargs)

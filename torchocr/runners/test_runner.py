@@ -19,17 +19,16 @@ def eval(model, valid_dataloader, post_process_class, metric_class):
             imgs = data_batch['image'].to(model.device)
             start = time.time()
             preds = model(imgs)
-            # data_batch = [item.numpy() for item in data_batch]
             # Obtain usable results from post-processing methods
-            post_result = post_process_class(preds, data_batch['label'])
+            post_result = post_process_class(preds, data_batch)
             total_time += time.time() - start
             # Evaluate the results of the current batch
-            metric_class(post_result)
+            metric_class(post_result, data_batch)
             pbar.update(1)
             total_frame += len(imgs)
 
-        metirc = metric_class.get_metric()
-        pbar.close()
-        model.train()
-        metirc['fps'] = total_frame / total_time
-        return metirc
+    metirc = metric_class.get_metric()
+    pbar.close()
+    model.train()
+    metirc['fps'] = total_frame / total_time
+    return metirc

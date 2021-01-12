@@ -55,7 +55,7 @@ class MultiStepWarmup(object):
 class CosineAnnealingLR(object):
     # 以余弦函数为周期，并在每个周期最大值时重新设置学习率。
     # 以初始学习率为最大学习率，以 2∗Tmax 为周期，在一个周期内先下降，后上升。
-    def __init__(self, T_max, eta_min, **kwargs):
+    def __init__(self, T_max, eta_min=0, **kwargs):
         self.T_max = T_max
         self.eta_min = eta_min
 
@@ -72,8 +72,10 @@ class CosineWarmup(object):
         self.epochs = epochs
 
     def __call__(self, optimizer):
-        lr_lambda = lambda epoch: (epoch + 1) / self.warm_up_epochs if epoch < self.warm_up_epochs \
+        lr_lambda = lambda epoch: (epoch + 1) / self.warm_up_epochs if epoch <= self.warm_up_epochs \
             else 0.5 * (math.cos(
             (epoch - self.warm_up_epochs) / (self.epochs - self.warm_up_epochs) * math.pi) + 1)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         return scheduler
+
+

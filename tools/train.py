@@ -30,10 +30,12 @@ from torchocr.runners.train_runner import TrainRunner
 def parse_args():
     parser = argparse.ArgumentParser(description='OCR train')
     parser.add_argument('--config', help='train config file path')
+    parser.add_argument('--resume', action='store_true', help='resume model')
     parser.add_argument(
         '--deterministic',
         action='store_true',
         help='whether to set deterministic options for CUDNN backend.')
+
     args = parser.parse_args()
 
     return args
@@ -78,20 +80,21 @@ def main():
     # build model
     model = build_model(cfg.model)
     device = select_device(global_config.device)
-    model = model.to(device)
+
     # TODO : distributedDataparallel代替DataParallel
     # if device.type != 'cpu' and torch.cuda.device_count() > 1:
-    #     model = torch.nn.DataParallel(model, device_ids=[0, 1])
+    #     model = torch.nn.DataParallel(model)
+    model = model.to(device)
     model.device = device
 
     # build train dataset
-    train_dataset = build_dataset(cfg.data.train)
-    train_loader = build_dataloader(train_dataset, data=cfg.data)
+    train_dataset = build_dataset(cfg.train_data.dataset)
+    train_loader = build_dataloader(train_dataset, data=cfg.train_data.loader)
 
     # if is eval , build eval dataloader,postprocess,metric
     if global_config.is_eval:
-        eval_dataset = build_dataset(cfg.data.val)
-        eval_loader = build_dataloader(eval_dataset, data=cfg.data)
+        eval_dataset = build_dataset(cfg.test_data.dataset)
+        eval_loader = build_dataloader(eval_dataset, data=cfg.test_data.loader)
         # build postprocess
         postprocess = build_postprocess(cfg.postprocess)
         # build metric
@@ -110,6 +113,10 @@ def main():
 
     runner = TrainRunner(global_config, model, optimizer, lr_scheduler, postprocess, criterion, train_loader,
                          eval_loader, metric, logger)
+
+    # # Resume
+    if global_config.resume_from is not None and args.resume:
+        runner.resume(global_config.resume_from)
 
     runner.run()
 

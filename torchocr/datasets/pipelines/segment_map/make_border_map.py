@@ -34,7 +34,10 @@ class MakeBorderMap():
         for i in range(len(text_polys)):
             if ignore_tags[i]:
                 continue
-            self.draw_border_map(text_polys[i], canvas, mask=mask)
+            try:
+                self.draw_border_map(text_polys[i], canvas, mask=mask)
+            except:
+                print(data['img_path'])
 
         canvas = canvas * (self.thresh_max - self.thresh_min) + self.thresh_min
 
@@ -90,6 +93,7 @@ class MakeBorderMap():
         xmax_valid = min(max(0, xmax), canvas.shape[1] - 1)
         ymin_valid = min(max(0, ymin), canvas.shape[0] - 1)
         ymax_valid = min(max(0, ymax), canvas.shape[0] - 1)
+
         canvas[ymin_valid:ymax_valid + 1, xmin_valid:xmax_valid + 1] = np.fmax(
             1 - distance_map[
                 ymin_valid - ymin:ymax_valid - ymax + height,

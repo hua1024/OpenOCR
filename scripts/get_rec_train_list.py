@@ -12,7 +12,7 @@ def gen_train_file(args):
     img_path = args.img_path
     files = os.listdir(img_path)
 
-    with open(os.path.join(args.save_path, 'test_list.txt'), 'w+', encoding='utf-8') as fid:
+    with open(os.path.join(args.save_path, 'train_list.txt'), 'w+', encoding='utf-8') as fid:
         for file in files:
             basename = os.path.basename(file)
             label = basename.split('_')[0]
@@ -23,8 +23,8 @@ def gen_train_file(args):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Hyperparams')
-    parser.add_argument('--label_path', nargs='?', type=str, default='/zzf/data/polygons/train/labels')
-    parser.add_argument('--img_path', nargs='?', type=str, default='/zzf/data/polygons/train/images')
-    parser.add_argument('--save_path', nargs='?', type=str, default='/zzf/data/polygons/train')
+    parser.add_argument('--label_path', nargs='?', type=str, default='/zzf/data/captcha/data/train')
+    parser.add_argument('--img_path', nargs='?', type=str, default='/zzf/data/captcha/data/train')
+    parser.add_argument('--save_path', nargs='?', type=str, default='/zzf/data/captcha/data')
     args = parser.parse_args()
     gen_train_file(args)

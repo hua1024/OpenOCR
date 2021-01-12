@@ -5,9 +5,6 @@
 import numpy as np
 import cv2
 import torch
-
-
-
 from torchocr.datasets.builder import PIPELINES
 
 def shrink_polygon_py(polygon, shrink_ratio):
@@ -116,3 +113,4 @@ class MakeShrinkMap():
 
     # def polygon_area(self, polygon):
     #     return cv2.contourArea(polygon)
+

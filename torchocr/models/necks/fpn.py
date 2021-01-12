@@ -91,7 +91,7 @@ class DB_FPN(nn.Module):
 class PSE_FPN(nn.Module):
     def __init__(self, in_channels, out_channels=256, **kwargs):
         super(PSE_FPN, self).__init__()
-        inner_channels = out_channels // 4
+        # inner_channels = out_channels // 4
         # inx 为将输入的channels 转为256
         self.in5 = ConvBnRelu(in_channels[-1], out_channels, kernel_size=1, stride=1, padding=0)
         self.in4 = ConvBnRelu(in_channels[-2], out_channels, kernel_size=1, stride=1, padding=0)
@@ -103,6 +103,9 @@ class PSE_FPN(nn.Module):
         self.out4 = ConvBnRelu(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.out3 = ConvBnRelu(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
         self.out2 = ConvBnRelu(out_channels, out_channels, kernel_size=3, stride=1, padding=1)
+
+        self.out_conv = ConvBnRelu(out_channels*4, out_channels, kernel_size=3, stride=1, padding=1)
+
 
     def forward(self, x):
         c2, c3, c4, c5 = x
@@ -121,6 +124,9 @@ class PSE_FPN(nn.Module):
         p2 = self.out2(out2)
         # 对fuse有没有必要做多一层conv，smooth
         fuse = torch.cat((p5, p4, p3, p2), 1)
+
+        fuse = self.out_conv(fuse)
+
         return fuse
 
     def _upsample(self, x, y, scale=1):

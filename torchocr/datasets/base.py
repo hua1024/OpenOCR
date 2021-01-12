@@ -33,5 +33,10 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
         return self.pipeline(results)
 
     def __getitem__(self, idx):
-        data = self.aug_data(idx)
-        return data
+        # todo : data出问题的情况下，重新找，写法上不严谨
+        # 如果当前的index有问题，需要继续随机的找一个
+        while True:
+            data = self.aug_data(idx)
+            if data is None:
+                continue
+            return data

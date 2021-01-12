@@ -134,3 +134,20 @@ class DetResizeForTest(object):
         ratio_w = float(resize_w) / ori_w
         img = cv2.resize(img, (int(resize_w), int(resize_h)))
         return img, [ratio_h, ratio_w]
+
+    def resize_image_type2(self, img, short_size=736):
+        height, width, _ = img.shape
+        if height < width:
+            new_height = short_size
+            new_width = new_height / height * width
+        else:
+            new_width = short_size
+            new_height = new_width / width * height
+        new_height = int(round(new_height / 32) * 32)
+        new_width = int(round(new_width / 32) * 32)
+
+        ratio_h = float(new_height) / height
+        ratio_w = float(new_width) / width
+
+        resized_img = cv2.resize(img, (new_width, new_height))
+        return resized_img, [ratio_h, ratio_w]

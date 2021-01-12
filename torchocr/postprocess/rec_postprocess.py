@@ -50,7 +50,7 @@ class BaseDncodeConverter(metaclass=ABCMeta):
         self.character = dict_character
 
     def add_special_char(self, dict_character):
-        # dict_character = ['blank'] + dict_character
+        dict_character = ['blank'] + dict_character
         return dict_character
 
     @abstractmethod
@@ -105,7 +105,11 @@ class CTCLabelDecode(BaseDncodeConverter):
         :param kwargs:
         :return:
         """
-        preds = preds.cpu().numpy()
+        # todo: 蹩脚的方式
+        if label is not None:
+            if isinstance(label,dict):
+                label = label['label']
+        preds = preds.cpu().detach().numpy()
         preds_idx = preds.argmax(axis=2)
         preds_prob = preds.max(axis=2)
         text = self.decode(preds_idx, preds_prob)

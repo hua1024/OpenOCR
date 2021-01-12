@@ -5,6 +5,7 @@
 import torch
 import torch.nn as nn
 from ..builder import HEADS
+import torch.nn.functional as F
 
 
 @HEADS.register_module()
@@ -16,4 +17,6 @@ class CTCHead(nn.Module):
 
     def forward(self, x):
         output = self.embedding(x)
+        if not self.training:
+            output = F.softmax(output, dim=2)
         return output

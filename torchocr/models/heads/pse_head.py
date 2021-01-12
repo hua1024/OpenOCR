@@ -13,13 +13,6 @@ import torch.nn.functional as F
 class PSEHead(nn.Module):
     def __init__(self, in_channels, result_num=6, img_shape=(640, 640), scale=1, **kwargs):
         super(PSEHead, self).__init__()
-
-        self.conv = nn.Sequential(
-            nn.Conv2d(in_channels * 4, in_channels, kernel_size=3, padding=1, stride=1),
-            nn.BatchNorm2d(in_channels),
-            nn.ReLU(inplace=True)
-        )
-
         self.out_conv = nn.Sequential(
             nn.Conv2d(in_channels, result_num, kernel_size=1, stride=1)
         )
@@ -27,8 +20,8 @@ class PSEHead(nn.Module):
         self.scale = scale
 
     def forward(self, x):
-        x = self.conv(x)
         x = self.out_conv(x)
+        # todo : 输出1/4的map ,测试的时候 需要将原始的h,w带进来，而不是设置640
         if not self.training:
             y = F.interpolate(x, size=(self.img_shape[0] // self.scale, self.img_shape[1] // self.scale),
                               mode='bilinear', align_corners=True)

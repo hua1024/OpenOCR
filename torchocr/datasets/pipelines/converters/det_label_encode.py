@@ -5,6 +5,7 @@
 
 '''
 主要包括读取label坐标,以及忽略部分不适用的文字
+todo : 添加越界检查
 '''
 
 import numpy as np

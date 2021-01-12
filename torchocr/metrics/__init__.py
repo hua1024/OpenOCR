@@ -2,7 +2,7 @@
 # @Time   : 2020/12/4 10:43
 # @Auto   : zzf-jeff
 
-from .det_metrics import  PolygonMetric
+from .det_metrics import  *
 from .rec_metrics import *
 from .builder import (METRICS, build_metrics)
 

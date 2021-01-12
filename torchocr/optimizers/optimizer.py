@@ -7,9 +7,8 @@ import torch
 
 @OPTIMIZER.register_module()
 class Adam(object):
-    def __init__(self, weight_decay, momentum, beta1, beta2, lr, **kwargs):
+    def __init__(self, weight_decay, beta1, beta2, lr, **kwargs):
         self.weight_decay = weight_decay
-        self.momentum = momentum
         self.beta1 = beta1
         self.beta2 = beta2
         self.lr = lr

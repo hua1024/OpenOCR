@@ -4,6 +4,7 @@
 
 
 from .txt_reader import *
+from .json_reader import *
 from .builder import (build_dataset, build_dataloader)
 from .pipelines.transforms import *
 from .pipelines.converters.ctc_converter import *
@@ -23,5 +24,6 @@ __all__ = [
     'MakeShrinkMap',
     'MakeBorderMap',
     'NormalizeImage',
-    'ToCHWImage'
+    'ToCHWImage',
+    'DetJsonDataset'
 ]

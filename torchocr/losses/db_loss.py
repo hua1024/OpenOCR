@@ -61,3 +61,4 @@ class DBLoss(nn.Module):
             loss_dict['loss'] = loss_probability_maps
 
         return loss_dict
+

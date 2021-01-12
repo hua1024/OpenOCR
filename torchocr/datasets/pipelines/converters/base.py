@@ -49,6 +49,7 @@ class BaseEncodeConverter(metaclass=ABCMeta):
         self.character = dict_character
 
     def add_special_char(self, dict_character):
+        dict_character = ['blank'] + dict_character
         return dict_character
 
 

@@ -5,12 +5,14 @@
 from .rnn_encoder import EncodeWithLSTM
 from .fpn import DB_FPN, PSE_FPN
 from .fpem_ffm import FPEM_FFM
-from .unet_encoder import PixelWithUnet
+from .unet_encoder import PixelWithUnet,C2TDWithUnet,EASTWithUnet
 
 __all__ = [
     'EncodeWithLSTM',
     'DB_FPN',
     'PSE_FPN',
     'FPEM_FFM',
-    'PixelWithUnet'
+    'PixelWithUnet',
+    'C2TDWithUnet',
+    'EASTWithUnet'
 ]

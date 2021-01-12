@@ -48,8 +48,8 @@ def main():
 
     model.device = device
 
-    eval_dataset = build_dataset(cfg.data.test)
-    eval_loader = build_dataloader(eval_dataset, data=cfg.data)
+    eval_dataset = build_dataset(cfg.test_data.dataset)
+    eval_loader = build_dataloader(eval_dataset, data=cfg.test_data.loader)
     # build postprocess
     postprocess = build_postprocess(cfg.postprocess)
     # build metric

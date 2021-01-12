@@ -60,7 +60,7 @@ class TrainRunner(BaseRunner):
 
         if metric is not None:
             self.main_indicator = metric.main_indicator
-
+            self.meta = {self.main_indicator: 0.0}
 
     def train_batch(self, data_batch, **kwargs):
         self.model.train()
@@ -77,6 +77,8 @@ class TrainRunner(BaseRunner):
         avg_loss = loss_dict['loss']
         avg_loss.backward()
         self.optimizer.step()
+
+        train_batch_cost = time.time() - batch_start
         # info
         lr = self.current_lr()[0]
         loss, log_vars = self.parse_losses(loss_dict)
@@ -86,9 +88,10 @@ class TrainRunner(BaseRunner):
 
         if self._iter > 0 and self._iter % self.global_cfg.print_batch_step == 0:
             logs = self.train_stats.log()
-            strs = 'epoch: [{}/{}], iter: {}, {}'.format(
-                self.epoch, self._max_epochs, self._iter, logs)
+            strs = 'epoch: [{}/{}], iter: {}, {} , batch_time: {:.5f}'.format(
+                self.epoch, self._max_epochs, self._iter, logs, train_batch_cost)
             self.logger.info(strs)
+
 
         self._iter += 1
 
@@ -111,6 +114,11 @@ class TrainRunner(BaseRunner):
                     cur_metirc_str = 'cur metirc, {}'.format(', '.join(
                         ['{}: {}'.format(k, v) for k, v in cur_metirc.items()]))
                     self.logger.info(cur_metirc_str)
+
+                    if cur_metirc[self.main_indicator] >= self.meta[self.main_indicator]:
+                        self.meta[self.main_indicator] = cur_metirc[self.main_indicator]
+                        self.meta['best_epoch'] = epoch
+                        self.save_checkpoint(self.work_dir, filename_tmpl='best.pth')
 
             # end batch
             self.lr_scheduler.step()
