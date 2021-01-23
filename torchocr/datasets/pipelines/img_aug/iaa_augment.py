@@ -5,7 +5,7 @@
 import numpy as np
 import imgaug
 import imgaug.augmenters as iaa
-
+import os
 from torchocr.datasets.builder import PIPELINES
 
 
@@ -61,19 +61,25 @@ class IaaAugment():
         self.augmenter = AugmenterBuilder().build(augmenter_args)
 
     def __call__(self, data):
-        image = data['image']
-        shape = image.shape
+        try:
+            if data is None:
+                return None
+            image = data['image']
+            shape = image.shape
 
-        if self.augmenter:
-            aug = self.augmenter.to_deterministic()
-            data['image'] = aug.augment_image(image)
-            data = self.may_augment_annotation(aug, data, shape)
-        return data
+            if self.augmenter:
+                aug = self.augmenter.to_deterministic()
+                data['image'] = aug.augment_image(image)
+                data = self.may_augment_annotation(aug, data, shape)
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
 
     def may_augment_annotation(self, aug, data, shape):
         if aug is None:
             return data
-
         line_polys = []
         for poly in data['polys']:
             new_poly = self.may_augment_poly(aug, shape, poly)

@@ -10,11 +10,13 @@
 import cv2
 import numpy as np
 import torch
+import os
 
 np.seterr(divide='ignore', invalid='ignore')
 import pyclipper
 from shapely.geometry import Polygon
 from torchocr.datasets.builder import PIPELINES
+
 
 @PIPELINES.register_module()
 class MakeBorderMap():
@@ -24,30 +26,39 @@ class MakeBorderMap():
         self.thresh_max = thresh_max
 
     def __call__(self, data):
-        im = data['image']
-        text_polys = data['polys']
-        ignore_tags = data['ignore_tags']
 
-        canvas = np.zeros(im.shape[:2], dtype=np.float32)
-        mask = np.zeros(im.shape[:2], dtype=np.float32)
+        try:
+            if data is None:
+                return None
 
-        for i in range(len(text_polys)):
-            if ignore_tags[i]:
-                continue
-            try:
-                self.draw_border_map(text_polys[i], canvas, mask=mask)
-            except:
-                print(data['img_path'])
+            im = data['image']
+            text_polys = data['polys']
+            ignore_tags = data['ignore_tags']
 
-        canvas = canvas * (self.thresh_max - self.thresh_min) + self.thresh_min
+            canvas = np.zeros(im.shape[:2], dtype=np.float32)
+            mask = np.zeros(im.shape[:2], dtype=np.float32)
 
-        canvas = torch.from_numpy(canvas)
-        mask = torch.from_numpy(mask)
+            for i in range(len(text_polys)):
+                if ignore_tags[i]:
+                    continue
+                try:
+                    self.draw_border_map(text_polys[i], canvas, mask=mask)
+                except:
+                    print(data['img_path'])
 
-        data['threshold_map'] = canvas
-        data['threshold_mask'] = mask
+            canvas = canvas * (self.thresh_max - self.thresh_min) + self.thresh_min
 
-        return data
+            canvas = torch.from_numpy(canvas)
+            mask = torch.from_numpy(mask)
+
+            data['threshold_map'] = canvas
+            data['threshold_mask'] = mask
+
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
 
     def draw_border_map(self, polygon, canvas, mask):
         polygon = np.array(polygon)

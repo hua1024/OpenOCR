@@ -30,16 +30,28 @@ def set_random_seed(seed, deterministic=False):
 
 
 def select_device(device='', apex=False, batch_size=None):
+
+    # todo : device的冗余处理可以去掉
+
     # device = 'cpu' or '0' or '0,1,2,3'
     cpu_request = device.lower() == 'cpu'
 
     if device and not cpu_request:  # if device requested other than 'cpu'
+        # os.environ['CUDA_VISIBLE_DEVICES'] 有很多情况下会失效，只有在主程序train.py会生效
         os.environ['CUDA_VISIBLE_DEVICES'] = device  # set environment variable
         assert torch.cuda.is_available(), 'CUDA unavailable, invalid device %s requested' % device  # check availablity
     cuda = False if cpu_request else torch.cuda.is_available()
+
+    # concat device id
+    str_ids = device.split(',')
+    gpu_ids = []
+    for str_id in str_ids:
+        id = int(str_id)
+        if id >= 0:
+            gpu_ids.append(id)
+    # print device param
     if cuda:
         c = 1024 ** 2  # bytes to MB
-        # ng = torch.cuda.device_count()
         device = device.replace(',', '')
         ng = len(device.replace(',', ''))
         if ng > 1 and batch_size:  # check that batch_size is compatible with device_count
@@ -54,36 +66,13 @@ def select_device(device='', apex=False, batch_size=None):
     else:
         print('=> Using CPU')
     print('')  # skip a line
-    return torch.device('cuda:0' if cuda else 'cpu')
+
+    return torch.device('cuda:{}'.format(gpu_ids[0]) if cuda else 'cpu'), gpu_ids
 
 
 def time_synchronized():
     torch.cuda.synchronize() if torch.cuda.is_available() else None
     return time.time()
-
-
-def fuse_conv_and_bn(conv, bn):
-    # https://tehnokv.com/posts/fusing-batchnorm-and-conv/
-    with torch.no_grad():
-        # init
-        fusedconv = torch.nn.Conv2d(conv.in_channels,
-                                    conv.out_channels,
-                                    kernel_size=conv.kernel_size,
-                                    stride=conv.stride,
-                                    padding=conv.padding,
-                                    bias=True)
-        # prepare filters
-        w_conv = conv.weight.clone().view(conv.out_channels, -1)
-        w_bn = torch.diag(bn.weight.div(torch.sqrt(bn.eps + bn.running_var)))
-        fusedconv.weight.copy_(torch.mm(w_bn, w_conv).view(fusedconv.weight.size()))
-        # prepare spatial bias
-        if conv.bias is not None:
-            b_conv = conv.bias
-        else:
-            b_conv = torch.zeros(conv.weight.size(0))
-        b_bn = bn.bias - bn.weight.mul(bn.running_mean).div(torch.sqrt(bn.running_var + bn.eps))
-        fusedconv.bias.copy_(torch.mm(w_bn, b_conv.reshape(-1, 1)).reshape(-1) + b_bn)
-        return fusedconv
 
 
 def model_info(model, report='summary'):

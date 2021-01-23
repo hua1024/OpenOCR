@@ -5,12 +5,14 @@
 from .rec_densenet import RecDenseNet
 from .rec_resnet import RecResNet
 from .det_resnet import DetResNet
-from .det_vgg import VGGPixel,VGGPixelWithDilation
+from .det_vgg import VGGPixel, VGGPixelWithDilation
+from .det_resnet_vd import DetResNetVd
 
 __all__ = [
     'RecDenseNet',
     'DetResNet',
     'VGGPixel',
     'RecResNet',
-    'VGGPixelWithDilation'
+    'VGGPixelWithDilation',
+    'DetResNetVd'
 ]

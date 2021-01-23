@@ -5,6 +5,46 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
+
+
+def ohem_single(pred_text, gt_text, training_mask):
+    pos_num = (int)(np.sum(gt_text > 0.5)) - (int)(np.sum((gt_text > 0.5) & (training_mask <= 0.5)))
+
+    if pos_num == 0:
+        selected_mask = training_mask
+        selected_mask = selected_mask.reshape(1, selected_mask.shape[0], selected_mask.shape[1]).astype('float32')
+        return selected_mask
+
+    neg_num = (int)(np.sum(gt_text <= 0.5))
+    neg_num = (int)(min(pos_num * 3, neg_num))
+
+    if neg_num == 0:
+        selected_mask = training_mask
+        selected_mask = selected_mask.reshape(1, selected_mask.shape[0], selected_mask.shape[1]).astype('float32')
+        return selected_mask
+
+    neg_score = pred_text[gt_text <= 0.5]
+    # 将负样本得分从高到低排序
+    neg_score_sorted = np.sort(-neg_score)
+    threshold = -neg_score_sorted[neg_num - 1]
+    selected_mask = ((pred_text >= threshold) | (gt_text > 0.5)) & (training_mask > 0.5)
+    selected_mask = selected_mask.reshape(1, selected_mask.shape[0], selected_mask.shape[1]).astype('float32')
+    return selected_mask
+
+
+def ohem_batch(pred_texts, gt_texts, training_masks):
+    pred_texts = pred_texts.data.cpu().numpy()
+    gt_texts = gt_texts.data.cpu().numpy()
+    training_masks = training_masks.data.cpu().numpy()
+    selected_masks = []
+    # batch
+    for i in range(pred_texts.shape[0]):
+        selected_masks.append(ohem_single(pred_texts[i, :, :], gt_texts[i, :, :], training_masks[i, :, :]))
+
+    selected_masks = np.concatenate(selected_masks, 0)
+    selected_masks = torch.from_numpy(selected_masks).float()
+    return selected_masks
 
 
 class BalanceCrossEntropyLoss(nn.Module):
@@ -38,34 +78,6 @@ class BalanceCrossEntropyLoss(nn.Module):
         if return_origin:
             return balance_loss, loss
         return balance_loss, None
-
-
-# class DiceLoss(nn.Module):
-#     def __init__(self, eps=1e-6):
-#         super().__init__()
-#         self.eps = eps
-#
-#     def forward(self,
-#                 pred: torch.Tensor,
-#                 gt,
-#                 mask,
-#                 weights=None):
-#         return self._compute(pred, gt, mask, weights)
-#
-#     def _compute(self, pred, gt, mask, weights):
-#         # if pred.dim() == 4:
-#         #     pred = pred[:, 0, :, :]
-#         #     gt = gt[:, 0, :, :]
-#         assert pred.shape == gt.shape
-#         assert pred.shape == mask.shape
-#         if weights is not None:
-#             assert weights.shape == mask.shape
-#             mask = weights * mask
-#         intersection = (pred * gt * mask).sum()
-#         union = (pred * mask).sum() + (gt * mask).sum() + self.eps
-#         loss = 1 - 2.0 * intersection / union
-#         assert loss <= 1
-#         return loss
 
 class DiceLoss(nn.Module):
     def __init__(self,eps=1e-6):

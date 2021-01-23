@@ -25,11 +25,11 @@ class DetJsonDataset(BaseDataset, metaclass=ABCMeta):
 
     def get_bboxs(self, gt_path):
         labels = []
-        instances = json.loads(open(gt_path, 'r',encoding='utf-8').read())
-        for instance in instances:
-            pts = instance['points']
-            labels.append(pts)
-
+        with open(gt_path, 'r',encoding='utf-8') as file:
+            instances = json.loads(file.read())
+            for instance in instances:
+                pts = instance['points']
+                labels.append(pts)
         return labels
 
 

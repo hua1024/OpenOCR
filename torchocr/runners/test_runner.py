@@ -8,6 +8,10 @@ import time
 
 
 def eval(model, valid_dataloader, post_process_class, metric_class):
+    if isinstance(model, torch.nn.DataParallel):
+        # TypeError: expected sequence object with len >= 0 or a single integer
+        model.device_ids = [model.gpu_ids[0]]
+
     model.eval()
     with torch.no_grad():
         total_frame = 0.0
@@ -30,5 +34,9 @@ def eval(model, valid_dataloader, post_process_class, metric_class):
     metirc = metric_class.get_metric()
     pbar.close()
     model.train()
+    if isinstance(model, torch.nn.DataParallel):
+        # TypeError: expected sequence object with len >= 0 or a single integer
+        model.device_ids = model.gpu_ids
+
     metirc['fps'] = total_frame / total_time
     return metirc

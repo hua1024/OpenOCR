@@ -15,6 +15,7 @@ from ..utils.stats import TrainingStats
 from .base import BaseRunner
 from torchocr.utils.checkpoints import save_checkpoint
 from .test_runner import eval
+from torch.cuda import amp
 
 
 class TrainRunner(BaseRunner):
@@ -51,12 +52,14 @@ class TrainRunner(BaseRunner):
         if type(self.global_cfg.eval_batch_step) == list and len(self.global_cfg.eval_batch_step) >= 2:
             self.start_eval_step = self.global_cfg.eval_batch_step[0]
             self.eval_batch_step = self.global_cfg.eval_batch_step[1]
-            self.logger.info(
+            self.logger_info(
                 "During the training process, after the {}th iteration, an evaluation is run every {} iterations".
                     format(self.start_eval_step, self.eval_batch_step))
 
         log_smooth_window = global_cfg.log_smooth_window
         self.train_stats = TrainingStats(log_smooth_window, ['lr'])
+        if self.global_cfg.is_amp:
+            self.scaler = amp.GradScaler(enabled=self.global_cfg.is_cuda)
 
         if metric is not None:
             self.main_indicator = metric.main_indicator
@@ -71,13 +74,22 @@ class TrainRunner(BaseRunner):
 
         self.optimizer.zero_grad()
         # forward
-        pred = self.model(data_batch['image'], **kwargs)
+        if self.global_cfg.is_amp:
+            with amp.autocast(enabled=self.global_cfg.is_cuda):
+                pred = self.model(data_batch['image'], **kwargs)
+        else:
+            pred = self.model(data_batch['image'], **kwargs)
+
         loss_dict = self.criterion(pred, data_batch)
         # backward
         avg_loss = loss_dict['loss']
-        avg_loss.backward()
-        self.optimizer.step()
-
+        if self.global_cfg.is_amp:
+            self.scaler.scale(avg_loss).backward()
+            self.scaler.step(self.optimizer)
+            self.scaler.update()
+        else:
+            avg_loss.backward()
+            self.optimizer.step()
         train_batch_cost = time.time() - batch_start
         # info
         lr = self.current_lr()[0]
@@ -90,15 +102,14 @@ class TrainRunner(BaseRunner):
             logs = self.train_stats.log()
             strs = 'epoch: [{}/{}], iter: {}, {} , batch_time: {:.5f}'.format(
                 self.epoch, self._max_epochs, self._iter, logs, train_batch_cost)
-            self.logger.info(strs)
-
+            self.logger_info(strs)
 
         self._iter += 1
 
     def run(self, **kwargs):
-        self.logger.info('Start running, host: %s, work_dir: %s', '{}@{}'.format(getuser(), gethostname()),
-                         self.work_dir)
-        self.logger.info('max: %d epochs, max %d iters', self._max_epochs, self._max_iters)
+        self.logger_info(
+            'Start running, host: {}@{}, work_dir: {} '.format(self.work_dir, getuser(), gethostname()))
+        self.logger_info('max: {} epochs, max {} iters'.format(self._max_epochs, self._max_iters))
 
         for epoch in range(self.epoch, self._max_epochs):
             for i, data_batch in enumerate(self.train_loader):
@@ -113,7 +124,7 @@ class TrainRunner(BaseRunner):
                                       self.metric)
                     cur_metirc_str = 'cur metirc, {}'.format(', '.join(
                         ['{}: {}'.format(k, v) for k, v in cur_metirc.items()]))
-                    self.logger.info(cur_metirc_str)
+                    self.logger_info(cur_metirc_str)
 
                     if cur_metirc[self.main_indicator] >= self.meta[self.main_indicator]:
                         self.meta[self.main_indicator] = cur_metirc[self.main_indicator]
@@ -145,14 +156,14 @@ class TrainRunner(BaseRunner):
         """
 
         if meta is None:
-            meta = dict(epoch=self.epoch + 1, iter=self.iter)
+            meta = dict(epoch=self.epoch, iter=self.iter)
         elif isinstance(meta, dict):
-            meta.update(epoch=self.epoch + 1, iter=self.iter)
+            meta.update(epoch=self.epoch, iter=self.iter)
         else:
             raise TypeError('meta should be a dict or None, but got {}'.format(type(meta)))
         if self.meta is not None:
             meta.update(self.meta)
-        filename = filename_tmpl.format(self.epoch + 1)
+        filename = filename_tmpl.format(self.epoch)
         filepath = osp.join(out_dir, filename)
         optimizer = self.optimizer if save_optimizer else None
         save_checkpoint(self.model, filepath, optimizer=optimizer, meta=meta)

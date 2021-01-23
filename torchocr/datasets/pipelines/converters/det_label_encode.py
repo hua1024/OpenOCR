@@ -9,7 +9,7 @@ todo : 添加越界检查
 '''
 
 import numpy as np
-
+import os
 from ..compose import PIPELINES
 
 
@@ -18,22 +18,48 @@ class DetLabelEncode(object):
     def __init__(self, ignore_tags, **kwargs):
         self.ignore_tags = ignore_tags
 
+    def expand_points_num(self, boxes):
+        # 对于部分多边形多点的，要expand点到shape一致
+        max_points_num = 0
+        for box in boxes:
+            if len(box) > max_points_num:
+                max_points_num = len(box)
+
+        ex_boxes = []
+        for box in boxes:
+            ex_box = box + [box[-1]] * (max_points_num - len(box))
+            ex_boxes.append(ex_box)
+        return ex_boxes
+
     def __call__(self, data):
-        label = data['label']
-        boxes, txts, txt_tags = [], [], []
-        for i in range(0, len(label)):
-            gt = label[i].split(',')
-            box = [(int(gt[i]), int(gt[i + 1])) for i in range(0, 8, 2)]
-            txt = ''.join(gt[8:])
-            if txt in self.ignore_tags:
-                txt_tags.append(True)
-            else:
-                txt_tags.append(False)
+        try:
+            if data is None:
+                return None
+            label = data['label']
+            boxes, txts, txt_tags = [], [], []
+            for i in range(0, len(label)):
+                gt = label[i].split(',')
+                if not len(gt) >= 8:
+                    continue
+                box = [[int(gt[i]), int(gt[i + 1])] for i in range(0, len(gt), 2)]
 
-            boxes.append(box)
-            txts.append(txt)
+                txt = 'text'
+                # txt = gt[8:]
+                if txt in self.ignore_tags:
+                    txt_tags.append(True)
+                else:
+                    txt_tags.append(False)
+                boxes.append(box)
+                txts.append(txt)
 
-        data['polys'] = np.array(boxes)
-        data['texts'] = txts
-        data['ignore_tags'] = np.array(txt_tags)
-        return data
+            boxes = self.expand_points_num(boxes)
+
+            data['polys'] = np.array(boxes, dtype='float32')
+            data['texts'] = txts
+            data['ignore_tags'] = np.array(txt_tags, dtype='float32')
+            return data
+
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None

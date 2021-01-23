@@ -13,9 +13,21 @@ from torch.utils.data import DataLoader
 train_pipeline = [
     dict(type='DecodeImage', img_mode='BGR', channel_first=False),
     dict(type='DetLabelEncode', ignore_tags=['*', '###']),
-    dict(type='EASTProcessTrain',
-         image_shape=[512, 512], background_ratio=0.125, min_crop_side_ratio=0.1, min_text_size=10),
-    dict(type='KeepKeys', keep_keys=['image', 'score_map', 'geo_map', 'training_mask']),
+    dict(type='IaaAugment',
+         augmenter_args=[
+             dict(type='Fliplr', args=dict(p=0.5)),
+             dict(type='Affine', args=dict(rotate=[-10, 10])),
+             dict(type='Resize', args=dict(size=[0.5, 3.0])),
+         ]
+         ),
+    dict(type='PixelLinkProcessTrain',
+         size=[512, 512], max_tries=50, min_crop_side_ratio=0.1, keep_ratio=True,
+         num_neighbours=4,
+         ),
+    dict(type='NormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+    dict(type='ToCHWImage'),
+    dict(type='KeepKeys',
+         keep_keys=['image', 'pixel_cls_label', 'pixel_cls_weight', 'pixel_link_label', 'pixel_link_weight']),
 ]
 
 train_data = dict(
@@ -64,20 +76,20 @@ train_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=True, num_worke
 from torchocr.utils.vis import show_img
 
 
-for idx in range(100):
-    for i, data in enumerate(train_loader):
 
-        img = data['image']
-        score_map = data['score_map']
-        geo_map = data['geo_map']
-        training_mask = data['training_mask']
+for i, data in enumerate(train_loader):
 
-        print(img.shape)
-        print(score_map.shape)
-        print(geo_map.shape)
-        print(training_mask.shape)
-
-        show_img(img[0].numpy().transpose(1, 2, 0), title='img')
-        show_img(score_map[0].numpy().transpose(1, 2, 0), title='score_map')
-        break
+    # img = data['image']
+    # score_map = data['score_map']
+    # geo_map = data['geo_map']
+    # training_mask = data['training_mask']
+    #
+    # print(img.shape)
+    # print(score_map.shape)
+    # print(geo_map.shape)
+    # print(training_mask.shape)
+    #
+    # show_img(img[0].numpy().transpose(1, 2, 0), title='img')
+    # show_img(score_map[0].numpy().transpose(1, 2, 0), title='score_map')
+    break
 

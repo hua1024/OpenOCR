@@ -49,13 +49,8 @@ class BaseEncodeConverter(metaclass=ABCMeta):
         self.character = dict_character
 
     def add_special_char(self, dict_character):
-        dict_character = ['blank'] + dict_character
         return dict_character
-
 
     @abstractmethod
     def encode(self, *args, **kwargs):
         pass
-
-    def get_ignored_tokens(self):
-        return [0]  # for ctc blank

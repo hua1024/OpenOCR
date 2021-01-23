@@ -154,7 +154,7 @@ class BaseRunner(object):
         return loss, log_vars
 
     def load_checkpoint(self, filename, map_location='cpu', strict=False):
-        self.logger.info('load checkpoint from %s', filename)
+        self.logger_info('load checkpoint from {}'.format(filename))
         return load_checkpoint(self.model, filename, map_location, strict,
                                self.logger)
 
@@ -182,7 +182,7 @@ class BaseRunner(object):
             else:
                 raise TypeError(
                     'Optimizer should be dict or torch.optim.Optimizer but got {}'.format(type(self.optimizer)))
-        self.logger.info('resumed epoch %d, iter %d', self.epoch, self.iter)
+        self.logger_info('resumed epoch {}, iter {}'.format(self.epoch, self.iter))
 
     def set_input(self, data_batch):
         """dict 可变参数传递
@@ -194,3 +194,7 @@ class BaseRunner(object):
             if value is not None:
                 if isinstance(value, torch.Tensor):
                     data_batch[key] = value.to(self.model.device)
+
+    def logger_info(self, s):
+        if self.global_cfg['local_rank'] == 0:
+            self.logger.info(s)

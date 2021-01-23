@@ -51,16 +51,17 @@ class DeConvBnRelu(nn.Module):
 
 @NECKS.register_module()
 class PixelWithUnet(nn.Module):
-    def __init__(self, in_channels, **kwargs):
+    def __init__(self, in_channels, num_neighbours, **kwargs):
         super().__init__()
+        self.link_out = num_neighbours * 2
         self.out1_cls = conv1x1(in_channels[0], 2)
-        self.out1_link = conv1x1(in_channels[0], 16)
+        self.out1_link = conv1x1(in_channels[0], self.link_out)
         self.out2_cls = conv1x1(in_channels[1], 2)
-        self.out2_link = conv1x1(in_channels[1], 16)
+        self.out2_link = conv1x1(in_channels[1], self.link_out)
         self.out3_cls = conv1x1(in_channels[2], 2)
-        self.out3_link = conv1x1(in_channels[2], 16)
+        self.out3_link = conv1x1(in_channels[2], self.link_out)
         self.out4_cls = conv1x1(in_channels[3], 2)
-        self.out4_link = conv1x1(in_channels[3], 16)
+        self.out4_link = conv1x1(in_channels[3], self.link_out)
 
     def forward(self, x):
         c1, c2, c3, c4 = x
@@ -79,11 +80,7 @@ class PixelWithUnet(nn.Module):
 
     def _upsample(self, x, y, scale=1):
         _, _, H, W = y.size()
-        # return F.upsample(x, size=(H // scale, W // scale), mode='nearest')
         return F.interpolate(x, size=(H // scale, W // scale), mode='nearest')
-
-
-
 
 
 @NECKS.register_module()

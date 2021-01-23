@@ -50,7 +50,10 @@ class CTCLabelEncode(BaseEncodeConverter):
             return None
         return text_list
 
-
+    def add_special_char(self, dict_character):
+        # 默认ctc将-(blank)放在开头
+        dict_character = ['blank'] + dict_character
+        return dict_character
 
     def __call__(self, data):
         text = data['label']

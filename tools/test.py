@@ -42,14 +42,14 @@ def main():
 
     # build model
     model = build_model(cfg.model)
-    load_checkpoint(model, args.model_path)
-    device = select_device(global_config.device)
+    device, gpu_ids = select_device(global_config.gpu_ids)
+    load_checkpoint(model, args.model_path,map_location=device)
     model = model.to(device)
 
     model.device = device
 
     eval_dataset = build_dataset(cfg.test_data.dataset)
-    eval_loader = build_dataloader(eval_dataset, data=cfg.test_data.loader)
+    eval_loader = build_dataloader(eval_dataset, loader_cfg=cfg.test_data.loader)
     # build postprocess
     postprocess = build_postprocess(cfg.postprocess)
     # build metric

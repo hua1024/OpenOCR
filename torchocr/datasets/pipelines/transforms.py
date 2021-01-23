@@ -5,6 +5,7 @@ from torchocr.datasets.pipelines.compose import PIPELINES
 
 from torchvision import transforms
 import cv2
+import os
 import numpy as np
 
 
@@ -17,7 +18,7 @@ class KeepKeys(object):
         if len(self.keep_keys):
             data_dict = {}
             for k, v in data.items():
-                if k  in self.keep_keys:
+                if k in self.keep_keys:
                     data_dict[k] = v
             return data_dict
         else:
@@ -64,17 +65,25 @@ class DecodeImage(object):
         self.channel_first = channel_first
 
     def __call__(self, data):
-        img = data['image']
-        assert isinstance(img, np.ndarray), 'img not cv2 type'
-        if self.img_mode == 'GRAY':
-            img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
-        elif self.img_mode == 'RGB':
-            assert img.shape[2] == 3, 'invalid shape of image[%s]' % (img.shape)
-            img = img[:, :, ::-1]  # BGR-->RGB
-        if self.channel_first:
-            img = img.transpose((2, 0, 1))
-        data['image'] = img
-        return data
+        try:
+            if data is None:
+                return None
+            img = data['image']
+            assert isinstance(img, np.ndarray), 'img not cv2 type'
+            if self.img_mode == 'GRAY':
+                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+            elif self.img_mode == 'RGB':
+                assert img.shape[2] == 3, 'invalid shape of image[%s]' % (img.shape)
+                img = img[:, :, ::-1]  # BGR-->RGB
+            if self.channel_first:
+                img = img.transpose((2, 0, 1))
+            data['image'] = img
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
+
 
 @PIPELINES.register_module()
 class NormalizeImage(object):
@@ -95,8 +104,9 @@ class NormalizeImage(object):
     def __call__(self, data):
         img = data['image']
         data['image'] = (
-            img.astype('float32') * self.scale - self.mean) / self.std
+                                img.astype('float32') * self.scale - self.mean) / self.std
         return data
+
 
 @PIPELINES.register_module()
 class ToCHWImage(object):

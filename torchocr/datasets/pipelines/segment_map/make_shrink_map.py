@@ -5,7 +5,9 @@
 import numpy as np
 import cv2
 import torch
+import os
 from torchocr.datasets.builder import PIPELINES
+
 
 def shrink_polygon_py(polygon, shrink_ratio):
     """
@@ -47,42 +49,50 @@ class MakeShrinkMap():
         self.min_text_size = min_text_size
         self.shrink_ratio = shrink_ratio
 
-    def __call__(self, data: dict) -> dict:
+    def __call__(self, data):
         """
         从scales中随机选择一个尺度，对图片和文本框进行缩放
         :param data: {'img':,'text_polys':,'texts':,'ignore_tags':}
         :return:
         """
-        image = data['image']
-        text_polys = data['polys']
-        ignore_tags = data['ignore_tags']
 
-        h, w = image.shape[:2]
-        text_polys, ignore_tags = self.validate_polygons(text_polys, ignore_tags, h, w)
-        gt = np.zeros((h, w), dtype=np.float32)
-        mask = np.ones((h, w), dtype=np.float32)
+        try:
+            if data is None:
+                return None
+            image = data['image']
+            text_polys = data['polys']
+            ignore_tags = data['ignore_tags']
 
-        for i in range(len(text_polys)):
-            polygon = text_polys[i]
-            height = max(polygon[:, 1]) - min(polygon[:, 1])
-            width = max(polygon[:, 0]) - min(polygon[:, 0])
-            if ignore_tags[i] or min(height, width) < self.min_text_size:
-                cv2.fillPoly(mask, polygon.astype(np.int32)[np.newaxis, :, :], 0)
-                ignore_tags[i] = True
-            else:
-                shrinked = self.shrink_func(polygon, self.shrink_ratio)
-                if shrinked.size == 0:
+            h, w = image.shape[:2]
+            text_polys, ignore_tags = self.validate_polygons(text_polys, ignore_tags, h, w)
+            gt = np.zeros((h, w), dtype=np.float32)
+            mask = np.ones((h, w), dtype=np.float32)
+
+            for i in range(len(text_polys)):
+                polygon = text_polys[i]
+                height = max(polygon[:, 1]) - min(polygon[:, 1])
+                width = max(polygon[:, 0]) - min(polygon[:, 0])
+                if ignore_tags[i] or min(height, width) < self.min_text_size:
                     cv2.fillPoly(mask, polygon.astype(np.int32)[np.newaxis, :, :], 0)
                     ignore_tags[i] = True
-                    continue
-                cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
+                else:
+                    shrinked = self.shrink_func(polygon, self.shrink_ratio)
+                    if shrinked.size == 0:
+                        cv2.fillPoly(mask, polygon.astype(np.int32)[np.newaxis, :, :], 0)
+                        ignore_tags[i] = True
+                        continue
+                    cv2.fillPoly(gt, [shrinked.astype(np.int32)], 1)
 
-        gt = torch.from_numpy(gt)
-        mask = torch.from_numpy(mask)
+            gt = torch.from_numpy(gt)
+            mask = torch.from_numpy(mask)
 
-        data['shrink_map'] = gt
-        data['shrink_mask'] = mask
-        return data
+            data['shrink_map'] = gt
+            data['shrink_mask'] = mask
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
 
     def validate_polygons(self, polygons, ignore_tags, h, w):
         '''
@@ -113,4 +123,3 @@ class MakeShrinkMap():
 
     # def polygon_area(self, polygon):
     #     return cv2.contourArea(polygon)
-

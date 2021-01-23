@@ -5,11 +5,13 @@
 import random
 import cv2
 import numpy as np
+import os
 
 # learn for https://github.com/argman/EAST
 # TODO : 逻辑的注释
 
 from torchocr.datasets.builder import PIPELINES
+
 
 @PIPELINES.register_module()
 class EastRandomCropData():
@@ -25,50 +27,63 @@ class EastRandomCropData():
         self.require_original_image = require_original_image
         self.keep_ratio = keep_ratio
 
-    def __call__(self, data: dict) -> dict:
+    def __call__(self, data):
         """
         从scales中随机选择一个尺度，对图片和文本框进行缩放
         :param data: {'img':,'text_polys':,'texts':,'ignore_tags':}
         :return:
         """
-        im = data['image']
-        text_polys = data['polys']
-        ignore_tags = data['ignore_tags']
-        texts = data['texts']
-        all_care_polys = [text_polys[i] for i, tag in enumerate(ignore_tags) if not tag]
-        # 计算crop区域
-        crop_x, crop_y, crop_w, crop_h = self.crop_area(im, all_care_polys)
-        # crop 图片 保持比例填充
-        scale_w = self.size[0] / crop_w
-        scale_h = self.size[1] / crop_h
-        scale = min(scale_w, scale_h)
-        h = int(crop_h * scale)
-        w = int(crop_w * scale)
-        if self.keep_ratio:
-            if len(im.shape) == 3:
-                padimg = np.zeros((self.size[1], self.size[0], im.shape[2]), im.dtype)
+        try:
+            if data is None:
+                return None
+            im = data['image']
+            text_polys = data['polys']
+            ignore_tags = data['ignore_tags']
+            texts = data['texts']
+            all_care_polys = [text_polys[i] for i, tag in enumerate(ignore_tags) if not tag]
+            # 计算crop区域
+            crop_x, crop_y, crop_w, crop_h = self.crop_area(im, all_care_polys)
+            # crop 图片 保持比例填充
+            scale_w = self.size[0] / crop_w
+            scale_h = self.size[1] / crop_h
+            scale = min(scale_w, scale_h)
+            h = int(crop_h * scale)
+            w = int(crop_w * scale)
+            if self.keep_ratio:
+                if len(im.shape) == 3:
+                    padimg = np.zeros((self.size[1], self.size[0], im.shape[2]), im.dtype)
+                else:
+                    padimg = np.zeros((self.size[1], self.size[0]), im.dtype)
+                padimg[:h, :w] = cv2.resize(im[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], (w, h))
+                img = padimg
             else:
-                padimg = np.zeros((self.size[1], self.size[0]), im.dtype)
-            padimg[:h, :w] = cv2.resize(im[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], (w, h))
-            img = padimg
-        else:
-            img = cv2.resize(im[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], tuple(self.size))
-        # crop 文本框
-        text_polys_crop = []
-        ignore_tags_crop = []
-        texts_crop = []
-        for poly, text, tag in zip(text_polys, texts, ignore_tags):
-            poly = ((poly - (crop_x, crop_y)) * scale).tolist()
-            if not self.is_poly_outside_rect(poly, 0, 0, w, h):
-                text_polys_crop.append(poly)
-                ignore_tags_crop.append(tag)
-                texts_crop.append(text)
+                img = cv2.resize(im[crop_y:crop_y + crop_h, crop_x:crop_x + crop_w], tuple(self.size))
+            # crop 文本框
+            text_polys_crop = []
+            ignore_tags_crop = []
+            texts_crop = []
+            for poly, text, tag in zip(text_polys, texts, ignore_tags):
+                # if isinstance(poly, list):
+                #     print('ok', poly)
+                #     poly = np.array(poly)
+                #     print(poly)
+                tmp = (poly - (crop_x, crop_y))
+                poly = (tmp * scale).tolist()
+                if not self.is_poly_outside_rect(poly, 0, 0, w, h):
+                    text_polys_crop.append(poly)
+                    ignore_tags_crop.append(tag)
+                    texts_crop.append(text)
 
-        data['image'] = img
-        data['polys'] = np.float32(text_polys_crop)
-        data['ignore_tags'] = ignore_tags_crop
-        data['texts'] = texts_crop
-        return data
+            data['image'] = img
+            data['polys'] = np.float32(text_polys_crop)
+            data['ignore_tags'] = ignore_tags_crop
+            data['texts'] = texts_crop
+
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
 
     def is_poly_in_rect(self, poly, x, y, w, h):
         poly = np.array(poly)

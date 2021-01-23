@@ -5,6 +5,7 @@ from torch.utils.data import Dataset
 from abc import ABCMeta, abstractmethod
 import copy
 from torchocr.datasets.pipelines.compose import Compose
+import numpy as np
 
 
 class BaseDataset(Dataset, metaclass=ABCMeta):
@@ -35,8 +36,7 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
     def __getitem__(self, idx):
         # todo : data出问题的情况下，重新找，写法上不严谨
         # 如果当前的index有问题，需要继续随机的找一个
-        while True:
-            data = self.aug_data(idx)
-            if data is None:
-                continue
-            return data
+        data = self.aug_data(idx)
+        if data is None:
+            return self.__getitem__(np.random.randint(self.__len__()))
+        return data

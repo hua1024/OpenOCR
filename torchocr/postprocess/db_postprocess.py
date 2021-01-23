@@ -26,6 +26,7 @@ class DBPostProcess():
         pred:
             binary: text region segmentation map, with shape (N, 1,H, W)
         '''
+        # 取出channel的数据 [n,1,h,w]-->[n,h,w]
         pred = pred[:, 0, :, :]
         segmentation = self.binarize(pred)
         result_batch = []
@@ -36,10 +37,10 @@ class DBPostProcess():
         for batch_index in range(pred.shape[0]):
             src_h, src_w, ratio_h, ratio_w = shape_list[batch_index]
 
-            if isinstance(src_h,torch.Tensor):
-                src_h=src_h.numpy()
-            if isinstance(src_w,torch.Tensor):
-                src_w=src_w.numpy()
+            if isinstance(src_h, torch.Tensor):
+                src_h = src_h.numpy()
+            if isinstance(src_w, torch.Tensor):
+                src_w = src_w.numpy()
 
             mask = segmentation[batch_index]
             boxes, scores = self.boxes_from_bitmap(pred[batch_index], mask,
@@ -150,7 +151,6 @@ class DBPostProcess():
 
         bitmap = _bitmap
         height, width = bitmap.shape
-
         outs = cv2.findContours((bitmap * 255).astype(np.uint8), cv2.RETR_LIST,
                                 cv2.CHAIN_APPROX_SIMPLE)
         if len(outs) == 3:
@@ -168,7 +168,7 @@ class DBPostProcess():
                 continue
             points = np.array(points)
             score = self.box_score_fast(pred, points.reshape(-1, 2))
-            if score < self.box_thresh :
+            if score < self.box_thresh:
                 continue
             box = self.unclip(points).reshape(-1, 1, 2)
             box, sside = self.get_mini_boxes(box)
