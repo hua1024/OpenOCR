@@ -3,6 +3,7 @@
 # @Auto   : zzf-jeff
 
 import torch.nn as nn
+import torch
 from ..builder import HEADS
 
 
@@ -24,6 +25,8 @@ class PixelHead(nn.Module):
         (score_map, link_map) = x
         out_link = self.link(link_map)
         out_cls = self.cls(score_map)
-
+        if not self.training:
+            outputs = torch.cat((out_cls, out_link), dim=1)
+            return outputs
         pred = {'pred_link': out_link, 'pred_cls': out_cls}
         return pred

@@ -17,17 +17,21 @@ class RecMetric(object):
         preds, labels = pred_label
         correct_num = 0
         all_num = 0
+        char_num = 0
+
         norm_edit_dis = 0.0
         for (pred, pred_conf), (target, _) in zip(preds, labels):
             norm_edit_dis += Levenshtein.distance(pred, target) / max(
                 len(pred), len(target))
             if pred == target:
                 correct_num += 1
+
             all_num += 1
 
         self.correct_num += correct_num
         self.all_num += all_num
         self.norm_edit_dis += norm_edit_dis
+
         return {
             'acc': correct_num / all_num,
             'norm_edit_dis': 1 - norm_edit_dis / all_num

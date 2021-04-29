@@ -6,7 +6,6 @@
 import numpy as np
 import cv2
 import torch
-import pyclipper
 from torchocr.datasets.builder import PIPELINES
 from torchocr.datasets.pipelines.img_aug.random_crop import EastRandomCropData
 
@@ -19,7 +18,8 @@ class PixelLinkProcessTrain():
                  max_tries=50,
                  min_crop_side_ratio=0.1,
                  keep_ratio=True,
-                 num_neighbours=4):
+                 num_neighbours=4,
+                 scale=0.25):
         """PixelLink label process for train
 
         :param size: crop img size .e.g=[640,640]
@@ -30,33 +30,7 @@ class PixelLinkProcessTrain():
         self.crop_func = EastRandomCropData(size, max_tries, min_crop_side_ratio, keep_ratio)
         self.crop_size = size
         self.num_neighbours = num_neighbours
-
-    def cal_norm_xy(self, polys, img_size):
-        """
-
-        :param polys:
-        :param img_size:
-        :return:
-        """
-
-        # print(polys[:, 0].reshape(-1, 1))
-
-        norm_x = np.hstack((polys[:, 0].reshape(-1, 1), polys[:, 2].reshape(-1, 1),
-                            polys[:, 2].reshape(-1, 1), polys[:, 0].reshape(-1, 1)))
-        norm_x = np.array(norm_x, dtype=np.float32)
-
-        # print(norm_x)
-
-        norm_x /= img_size[1]
-        norm_y = np.hstack((polys[:, 1].reshape(-1, 1), polys[:, 1].reshape(-1, 1),
-                            polys[:, 3].reshape(-1, 1), polys[:, 3].reshape(-1, 1)))
-
-        norm_y = np.array(norm_y, dtype=np.float32)
-        norm_y /= img_size[0]
-
-        labels = np.ones(norm_x.shape[0], dtype=np.int32)
-
-        return norm_x, norm_y, labels
+        self.scale = scale
 
     def get_neighbours_8(self, x, y):
         """
@@ -93,7 +67,39 @@ class PixelLinkProcessTrain():
         else:
             return self.get_neighbours_8(x, y)
 
-    def cal_gt_for_single_image(self, normed_xs, normed_ys, labels, config):
+    def draw_contours(self, img, contours, idx=-1, color=1, border_width=1):
+        #     img = img.copy()
+        cv2.drawContours(img, contours, idx, color, border_width)
+        return img
+
+    def points_to_contour(self, points):
+        contours = [[list(p)] for p in points]
+        return np.asarray(contours, dtype=np.int32)
+
+    def points_to_contours(self, points):
+        return np.asarray([self.points_to_contour(points)])
+
+    def find_contours(self, mask, method=None):
+        if method is None:
+            method = cv2.CHAIN_APPROX_SIMPLE
+        mask = np.asarray(mask, dtype=np.uint8)
+        mask = mask.copy()
+        try:
+            contours, _ = cv2.findContours(mask, mode=cv2.RETR_CCOMP,
+                                           method=method)
+        except:
+            _, contours, _ = cv2.findContours(mask, mode=cv2.RETR_CCOMP,
+                                              method=method)
+        return contours
+
+    def is_valid_cord(self, x, y, w, h):
+        """
+        Tell whether the 2D coordinate (x, y) is valid or not.
+        If valid, it should be on an h x w image
+        """
+        return x >= 0 and x < w and y >= 0 and y < h
+
+    def cal_gt_for_single_image(self, normed_xs, normed_ys, labels):
         """
         Args:
             xs, ys: both in shape of (N, 4),
@@ -108,9 +114,12 @@ class PixelLinkProcessTrain():
             pixel_link_label
             pixel_link_weight
         """
-        score_map_shape = self.crop_size
+        # modify origin author
+
+        score_map_shape = (int(self.crop_size[0] * self.scale), int(self.crop_size[1] * self.scale))
         pixel_cls_weight_method = 'PIXEL_CLS_WEIGHT_bbox_balanced'
         h, w = score_map_shape
+
         text_label = 1
         ignore_label = -1
         background_label = 0
@@ -125,12 +134,14 @@ class PixelLinkProcessTrain():
         assert len(normed_xs) == len(labels)
 
         num_positive_bboxes = np.sum(np.asarray(labels) == text_label)
-        # rescale normalized xys to absolute values
+
+        # rescale normalized xys to absolute values(映射回crop图的坐标)
         xs = normed_xs * w
         ys = normed_ys * h
 
         # initialize ground truth values
         mask = np.zeros(score_map_shape, dtype=np.int32)
+
         pixel_cls_label = np.ones(score_map_shape, dtype=np.int32) * background_label
         pixel_cls_weight = np.zeros(score_map_shape, dtype=np.float32)
 
@@ -140,6 +151,7 @@ class PixelLinkProcessTrain():
         # find overlapped pixels, and consider them as ignored in pixel_cls_weight
         # and pixels in ignored bboxes are ignored as well
         # That is to say, only the weights of not ignored pixels are set to 1
+        ## 按照重叠设置，将重叠的像素设置在cls_weight中设置为-1.同时ignore=-1的也视为 -1
 
         ## get the masks of all bboxes
         bbox_masks = []
@@ -149,12 +161,10 @@ class PixelLinkProcessTrain():
                 continue
 
             bbox_mask = mask.copy()
-
             bbox_points = zip(bbox_xs, bbox_ys)
-            bbox_contours = points_to_contours(bbox_points)
-            draw_contours(bbox_mask, bbox_contours, idx=-1,
-                          color=1, border_width=-1)
-
+            bbox_contours = self.points_to_contours(bbox_points)
+            self.draw_contours(bbox_mask, bbox_contours, idx=-1,
+                               color=1, border_width=-1)
             bbox_masks.append(bbox_mask)
 
             if labels[bbox_idx] == text_label:
@@ -188,6 +198,7 @@ class PixelLinkProcessTrain():
             # print(type(bbox_positive_pixel_mask), type(bbox_label))
             pixel_cls_label += bbox_positive_pixel_mask * bbox_label
 
+
             # for the pixel cls weights, only positive pixels are set to ones
             if pixel_cls_weight_method == "PIXEL_CLS_WEIGHT_all_ones":
                 pixel_cls_weight += bbox_positive_pixel_mask
@@ -213,10 +224,10 @@ class PixelLinkProcessTrain():
 
             ## the border of bboxes might be distored because of overlapping
             ## so recalculate it, and find the border mask
-            new_bbox_contours = find_contours(bbox_positive_pixel_mask)
+            new_bbox_contours = self.find_contours(bbox_positive_pixel_mask)
             bbox_border_mask = mask.copy()
-            draw_contours(bbox_border_mask, new_bbox_contours, -1,
-                          color=1, border_width=bbox_border_width * 2 + 1)
+            self.draw_contours(bbox_border_mask, new_bbox_contours, -1,
+                               color=1, border_width=bbox_border_width * 2 + 1)
             bbox_border_mask *= bbox_positive_pixel_mask
             bbox_border_cords = np.where(bbox_border_mask)
 
@@ -230,9 +241,10 @@ class PixelLinkProcessTrain():
                 return bbox_positive_pixel_mask[ny, nx]
 
             for y, x in border_points:
-                neighbours = get_neighbours(x, y, config)
+                neighbours = self.get_neighbours(x, y, self.num_neighbours)
+
                 for n_idx, (nx, ny) in enumerate(neighbours):
-                    if not is_valid_cord(nx, ny, w, h) or not in_bbox(nx, ny):
+                    if not self.is_valid_cord(nx, ny, w, h) or not in_bbox(nx, ny):
                         pixel_link_label[y, x, n_idx] = 0
 
         pixel_cls_weight = np.asarray(pixel_cls_weight, dtype=np.float32)
@@ -244,16 +256,25 @@ class PixelLinkProcessTrain():
         if data is None:
             return None
 
+        # crop img
         data = self.crop_func(data)
         img = data['image']
         text_polys = data['polys']
         text_tags = data['ignore_tags']
 
-        # print(text_polys)
-        # print('crop')
-        # print(text_polys.shape)
-        norm_x, norm_y, labels = self.cal_norm_xy(text_polys, self.crop_size)
+        h, w = img.shape[:2]
+        # cal norm point
+        norm_x = text_polys[:, :, 0] / w
+        norm_y = text_polys[:, :, 1] / h
+        # ignore_tags -1 is ignore,1 is text
+        text_tags = np.where(np.array(text_tags), 1, -1)
+
         pixel_cls_label, pixel_cls_weight, pixel_link_label, pixel_link_weight = \
-            self.cal_gt_for_single_image(norm_x, norm_y, labels)
+            self.cal_gt_for_single_image(norm_x, norm_y, text_tags)
+
+        data['cls_label'] = torch.from_numpy(pixel_cls_label).float()
+        data['cls_weight'] = torch.from_numpy(pixel_cls_weight)
+        data['link_label'] = torch.from_numpy(pixel_link_label.transpose((2, 0, 1))).float()
+        data['link_weight'] = torch.from_numpy(pixel_link_weight.transpose((2, 0, 1)))
 
         return data

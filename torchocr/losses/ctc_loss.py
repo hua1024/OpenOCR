@@ -24,7 +24,7 @@ class CTCLoss(nn.Module):
     def forward(self, pred, batch):
         """Run ctc loss
 
-        :param pred: Input pred,shape
+        :param pred: Input pred,shape  # [T,B,C]
         :param target: Label shape: (N,S) or sum(target_lengths)
         :param target_length: Label length shape : (N)
         :return:

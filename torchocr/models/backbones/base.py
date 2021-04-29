@@ -27,8 +27,9 @@ class BaseBackbone(nn.Module, metaclass=ABCMeta):
         :param pretrained: None or path(str)
         """
         # load pre weights
-        if pretrained is not None:
-            pass
+        # if pretrained is not None:
+        #     pass
+        pass
 
     ##  用abstractmethod保证实例化的子类必须含有forward方法
     @abstractmethod

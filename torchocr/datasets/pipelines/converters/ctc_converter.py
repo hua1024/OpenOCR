@@ -5,7 +5,7 @@ from .base import BaseEncodeConverter
 from ..compose import PIPELINES
 import torch
 import numpy as np
-
+import os
 
 ## todo:decode是否放在后处理部分会好一点
 @PIPELINES.register_module()
@@ -56,11 +56,18 @@ class CTCLabelEncode(BaseEncodeConverter):
         return dict_character
 
     def __call__(self, data):
-        text = data['label']
-        text = self.encode(text)
-        if text is None:
+        try:
+            if data is None:
+                return None
+            text = data['label']
+            text = self.encode(text)
+            if text is None:
+                return None
+            data['length'] = np.array(len(text))
+            text = text + [0] * (self.max_text_len - len(text))
+            data['label'] = np.array(text)
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
             return None
-        data['length'] = np.array(len(text))
-        text = text + [0] * (self.max_text_len - len(text))
-        data['label'] = np.array(text)
-        return data

@@ -52,6 +52,13 @@ class DeConvBnRelu(nn.Module):
 @NECKS.register_module()
 class PixelWithUnet(nn.Module):
     def __init__(self, in_channels, num_neighbours, **kwargs):
+        """ pixellink neck
+
+        :param in_channels:
+        :param num_neighbours:
+        :param kwargs:
+        """
+
         super().__init__()
         self.link_out = num_neighbours * 2
         self.out1_cls = conv1x1(in_channels[0], 2)
@@ -66,14 +73,15 @@ class PixelWithUnet(nn.Module):
     def forward(self, x):
         c1, c2, c3, c4 = x
         #
+
         out_cls = self.out4_cls(c4)
-        out_link = self.out4_link(c4)
-        #
         out_cls = self._upsample(out_cls, self.out3_cls(c3))
-        out_link = self._upsample(out_link, self.out3_link(c3))
         out_cls = self._upsample(out_cls, self.out2_cls(c2))
-        out_link = self._upsample(out_link, self.out2_link(c2))
         out_cls = self._upsample(out_cls, self.out1_cls(c1))
+
+        out_link = self.out4_link(c4)
+        out_link = self._upsample(out_link, self.out3_link(c3))
+        out_link = self._upsample(out_link, self.out2_link(c2))
         out_link = self._upsample(out_link, self.out1_link(c1))
 
         return (out_cls, out_link)

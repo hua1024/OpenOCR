@@ -62,7 +62,6 @@ class MakeShrinkMap():
             image = data['image']
             text_polys = data['polys']
             ignore_tags = data['ignore_tags']
-
             h, w = image.shape[:2]
             text_polys, ignore_tags = self.validate_polygons(text_polys, ignore_tags, h, w)
             gt = np.zeros((h, w), dtype=np.float32)
@@ -88,6 +87,7 @@ class MakeShrinkMap():
 
             data['shrink_map'] = gt
             data['shrink_mask'] = mask
+
             return data
         except Exception as e:
             file_name = os.path.basename(__file__).split(".")[0]
@@ -113,13 +113,33 @@ class MakeShrinkMap():
                 polygons[i] = polygons[i][::-1, :]
         return polygons, ignore_tags
 
-    def polygon_area(self, polygon):
-        edge = 0
-        for i in range(polygon.shape[0]):
-            next_index = (i + 1) % polygon.shape[0]
-            edge += (polygon[next_index, 0] - polygon[i, 0]) * (polygon[next_index, 1] - polygon[i, 1])
+    # def polygon_area(self, polygon):
+    #     edge = 0
+    #     for i in range(polygon.shape[0]):
+    #         next_index = (i + 1) % polygon.shape[0]
+    #         edge += (polygon[next_index, 0] - polygon[i, 0]) * (polygon[next_index, 1] - polygon[i, 1])
+    #
+    #     return edge / 2.
 
-        return edge / 2.
+    def polygon_area(self, polygon):
+        """
+        compute polygon area
+        """
+        area = 0
+        q = polygon[-1]
+        for p in polygon:
+            area += p[0] * q[1] - p[1] * q[0]
+            q = p
+        return area / 2.0
 
     # def polygon_area(self, polygon):
-    #     return cv2.contourArea(polygon)
+    #     edge = [
+    #         (polygon[1][0] - polygon[0][0]) * (polygon[1][1] + polygon[0][1]),
+    #         (polygon[2][0] - polygon[1][0]) * (polygon[2][1] + polygon[1][1]),
+    #         (polygon[3][0] - polygon[2][0]) * (polygon[3][1] + polygon[2][1]),
+    #         (polygon[0][0] - polygon[3][0]) * (polygon[0][1] + polygon[3][1])
+    #     ]
+    #     return np.sum(edge) / 2.
+    # def polygon_area(self, polygon):
+    #     edge = cv2.contourArea(polygon)
+    #     return edge

@@ -106,8 +106,6 @@ class DetectionIoUEvaluator(object):
 
         for n in range(len(pred)):
             points = pred[n]['points']
-            #             points = Polygon(points)
-            #             points = points.buffer(0)
             if not Polygon(points).is_valid or not Polygon(points).is_simple:
                 continue
 

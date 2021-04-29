@@ -36,27 +36,24 @@ class DetLabelEncode(object):
             if data is None:
                 return None
             label = data['label']
+            text = data['text']
             boxes, txts, txt_tags = [], [], []
-            for i in range(0, len(label)):
-                gt = label[i].split(',')
-                if not len(gt) >= 8:
-                    continue
-                box = [[int(gt[i]), int(gt[i + 1])] for i in range(0, len(gt), 2)]
 
-                txt = 'text'
-                # txt = gt[8:]
+            for idx, (point, txt) in enumerate(zip(label, text)):
+                if not len(point) >= 8:
+                    continue
+                box = [[int(point[i]), int(point[i + 1])] for i in range(0, len(point), 2)]
+                txt = txt[0]
                 if txt in self.ignore_tags:
                     txt_tags.append(True)
                 else:
                     txt_tags.append(False)
                 boxes.append(box)
                 txts.append(txt)
-
             boxes = self.expand_points_num(boxes)
-
             data['polys'] = np.array(boxes, dtype='float32')
             data['texts'] = txts
-            data['ignore_tags'] = np.array(txt_tags, dtype='float32')
+            data['ignore_tags'] = np.array(txt_tags, dtype=np.bool)
             return data
 
         except Exception as e:

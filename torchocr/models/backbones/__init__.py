@@ -2,17 +2,25 @@
 # @Time   : 2020/12/1 11:10
 # @Auto   : zzf-jeff
 
-from .rec_densenet import RecDenseNet
-from .rec_resnet import RecResNet
+
 from .det_resnet import DetResNet
-from .det_vgg import VGGPixel, VGGPixelWithDilation
-from .det_resnet_vd import DetResNetVd
+from .det_repvgg import DetRepVGG
+from .det_vgg import VGGPixelWithDilation, VGGPixel
+from .det_mobilenet_v3 import DetMobileNetV3
+
+from .rec_resnet import RecResNet
+from .rec_densenet import RecDenseNet
+from .rec_cspdensenet import RecCSPDenseNet
+from .rec_mobilenet_v3 import RecMobileNetV3
 
 __all__ = [
-    'RecDenseNet',
+    'DetMobileNetV3',
     'DetResNet',
-    'VGGPixel',
-    'RecResNet',
     'VGGPixelWithDilation',
-    'DetResNetVd'
+    'VGGPixel',
+    'DetRepVGG',
+    'RecResNet',
+    'RecDenseNet',
+    'RecCSPDenseNet',
+    'RecMobileNetV3'
 ]

@@ -14,7 +14,7 @@ from .base import BaseBackbone
 # C: 自定义的层
 
 cfg = {
-    'D': [64, 64, 'M', 128, 128, 'O', 'M', 256, 256, 256, 'O',
+    'D-Pixel': [64, 64, 'M', 128, 128, 'O', 'M', 256, 256, 256, 'O',
           'M', 512, 512, 512, 'O', 'M', 512, 512, 512, 'O', 'C', 1024, 1024, 'O'],  # VGG
     'P': [64, 64, 'M', 128, 128, 'M', 256, 256, 256, 'O',
           'M', 512, 512, 512, 'O', 'M', 512, 512, 512, 'O', 'C', 'C', 'C', 'O'],  # VGG_with_Dilation
@@ -51,12 +51,11 @@ class VGGPixel(BaseBackbone):
         # maxpool
         custom_layers = [
             [nn.MaxPool2d(kernel_size=3, stride=1, padding=1)]]
-        self.layers, self.endpoint_index = make_layers(cfg['D'], in_channels, custom_layers)
+        self.layers, self.endpoint_index = make_layers(cfg['D-Pixel'], in_channels, custom_layers)
         self.features = nn.ModuleList(self.layers)
 
     def forward(self, x):
         out = []
-
         for idx in range(len(self.features)):
             x = self.features[idx](x)
             if idx in self.endpoint_index:

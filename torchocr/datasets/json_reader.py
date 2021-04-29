@@ -9,29 +9,31 @@ import numpy as np
 import cv2
 import json
 
+
 @DATASET.register_module()
 class DetJsonDataset(BaseDataset, metaclass=ABCMeta):
-    def __init__(self, ann_file, pipeline, **kwargs):
-        super().__init__(ann_file, pipeline, **kwargs)
+    def __init__(self, ann_file, pipeline, mode, data_root, **kwargs):
+        super().__init__(ann_file, pipeline, mode, data_root, **kwargs)
 
     def load_annotations(self, ann_file):
         infos = self.read_txt(ann_file)
         data_infos = []
         for (img_path, gt_path) in infos:
-            labels = self.get_bboxs(gt_path)
-            img = cv2.imread(img_path)
-            data_infos.append({'img_path': img_path, 'image': img, 'label': labels})
+            labels, texts = self.get_bboxs(gt_path)
+            data_infos.append({'img_path': img_path, 'label': labels, 'text': texts})
         return data_infos
 
     def get_bboxs(self, gt_path):
         labels = []
-        with open(gt_path, 'r',encoding='utf-8') as file:
+        texts = []
+        with open(gt_path, 'r', encoding='utf-8') as file:
             instances = json.loads(file.read())
             for instance in instances:
                 pts = instance['points']
+                pts = pts.split(',')
+                texts.append(['ocr'])
                 labels.append(pts)
-        return labels
-
+        return labels, texts
 
     def read_txt(self, txt_path):
         '''
@@ -46,5 +48,3 @@ class DetJsonDataset(BaseDataset, metaclass=ABCMeta):
         with open(txt_path, 'r', encoding='utf-8') as f:
             infos = list(map(lambda line: line.strip().split(','), f))
         return infos
-
-

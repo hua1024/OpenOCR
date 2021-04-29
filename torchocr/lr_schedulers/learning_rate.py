@@ -6,7 +6,43 @@ import torch
 import torch.optim as optim
 
 import math
+import numpy as np
 from .builder import LR_SCHEDULER
+
+from torch.optim.lr_scheduler import _LRScheduler
+
+
+# class WarmUpLR(_LRScheduler):
+#     """warmup_training learning rate scheduler
+#     Args:
+#         optimizer: optimzier(e.g. SGD)
+#         total_iters: totoal_iters of warmup phase
+#     """
+#
+#     def __init__(self, optimizer, total_iters, last_epoch=-1):
+#         self.total_iters = total_iters
+#         super().__init__(optimizer, last_epoch)
+#
+#     def get_lr(self):
+#         """we will use the first m batches, and set the learning
+#         rate to base_lr * m / total_iters
+#         """
+#         return [base_lr * self.last_epoch / (self.total_iters + 1e-8) for base_lr in self.base_lrs]
+
+@LR_SCHEDULER.register_module()
+class DecayLearningRate(object):
+
+    def __init__(self, epochs, lr, **kwargs):
+        self.epochs = epochs
+        self.lr = lr
+        self.factor = 0.9
+
+    def __call__(self, optimizer):
+
+        lr_lambda = lambda epoch: float(self.lr) * np.power(1.0 - epoch / float(self.epochs + 1), self.factor).item()
+
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
+        return scheduler
 
 
 @LR_SCHEDULER.register_module()
@@ -77,5 +113,3 @@ class CosineWarmup(object):
             (epoch - self.warm_up_epochs) / (self.epochs - self.warm_up_epochs) * math.pi) + 1)
         scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_lambda)
         return scheduler
-
-

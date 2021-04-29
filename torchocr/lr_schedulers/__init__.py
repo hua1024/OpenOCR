@@ -7,4 +7,5 @@ from .builder import (LR_SCHEDULER, build_lr_scheduler)
 
 __all__ = [
     'LR_SCHEDULER', 'build_lr_scheduler',
+    'DecayLearningRate'
 ]

@@ -84,7 +84,7 @@ def load_checkpoint(model, filename, map_location=None, strict=False, logger=Non
         state_dict = checkpoint['state_dict']
     else:
         state_dict = checkpoint
-    # ? strip prefix of state_dict
+    # strip prefix of state_dict
     if list(state_dict.keys())[0].startswith('module.'):
         state_dict = {k[7:]: v for k, v in checkpoint['state_dict'].items()}
 

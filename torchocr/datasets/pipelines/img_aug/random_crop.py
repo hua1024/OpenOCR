@@ -6,11 +6,10 @@ import random
 import cv2
 import numpy as np
 import os
+from torchocr.datasets.builder import PIPELINES
 
 # learn for https://github.com/argman/EAST
 # TODO : 逻辑的注释
-
-from torchocr.datasets.builder import PIPELINES
 
 
 @PIPELINES.register_module()
@@ -63,12 +62,7 @@ class EastRandomCropData():
             ignore_tags_crop = []
             texts_crop = []
             for poly, text, tag in zip(text_polys, texts, ignore_tags):
-                # if isinstance(poly, list):
-                #     print('ok', poly)
-                #     poly = np.array(poly)
-                #     print(poly)
-                tmp = (poly - (crop_x, crop_y))
-                poly = (tmp * scale).tolist()
+                poly = ((poly - (crop_x, crop_y)) * scale).tolist()
                 if not self.is_poly_outside_rect(poly, 0, 0, w, h):
                     text_polys_crop.append(poly)
                     ignore_tags_crop.append(tag)

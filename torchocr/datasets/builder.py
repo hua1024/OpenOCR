@@ -36,17 +36,13 @@ def build_dataloader(dataset, loader_cfg, distributed=False, **kwargs):
     """
     rank, world_size = get_dist_info()
     batch_size = loader_cfg.batch_size
-    # num_workers = min([os.cpu_count() // loader_cfg.workers_per_gpu, batch_size if batch_size > 1 else 0, 8])
     num_workers = loader_cfg.num_workers
     shuffle = loader_cfg.shuffle
     collate_fn = loader_cfg.collate_fn
 
-    # batch_size = samples_per_gpu
-    # num_workers = workers_per_gpu
-
     if distributed:
-        # DistributedSampler为了安全dataset的shuffle必须为False
-        sampler = torch.utils.data.distributed.DistributedSampler(dataset, world_size, rank, shuffle=False)
+        sampler = torch.utils.data.distributed.DistributedSampler(dataset, world_size, rank, shuffle=True)
+        shuffle = False
     else:
         sampler = None
 

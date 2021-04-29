@@ -27,20 +27,39 @@ train_pipeline = [
     dict(type='NormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     dict(type='ToCHWImage'),
     dict(type='KeepKeys',
-         keep_keys=['image', 'pixel_cls_label', 'pixel_cls_weight', 'pixel_link_label', 'pixel_link_weight']),
+         keep_keys=['image', 'cls_label', 'cls_weight', 'link_label', 'link_weight']),
 ]
+
+# train_pipeline = [
+#     dict(type='DecodeImage', img_mode='BGR', channel_first=False),
+#     dict(type='DetLabelEncode', ignore_tags=['*', '###']),
+#     dict(type='IaaAugment',
+#          augmenter_args=[
+#              dict(type='Fliplr', args=dict(p=0.5)),
+#              dict(type='Affine', args=dict(rotate=[-10, 10])),
+#              dict(type='Resize', args=dict(size=[0.5, 3])),
+#          ]
+#          ),
+#     dict(type='EastRandomCropData',
+#          size=[640, 640], max_tries=50, min_crop_side_ratio=0.1, keep_ratio=True),
+#     dict(type='MakeBorderMap', shrink_ratio=0.4, thresh_min=0.3, thresh_max=0.7),
+#     dict(type='MakeShrinkMap', min_text_size=8, shrink_ratio=0.4),
+#     dict(type='NormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+#     dict(type='ToCHWImage'),
+#     dict(type='KeepKeys', keep_keys=['image', 'threshold_map', 'threshold_mask', 'shrink_map', 'shrink_mask']),
+# ]
 
 train_data = dict(
     dataset=dict(
         type='DetTextDataset',
-        ann_file=r'/zzf/data/icdar2015/test/test_list.txt',
+        ann_file=r'/media/newData/user/zzf/data/icdar2015/test/test_list.txt',
         pipeline=train_pipeline,
     ),
     loader=dict(
         batch_size=1,
-        num_workers=4,
-        workers_per_gpu=1,
+        num_workers=0,
         shuffle=True,
+        collate_fn=None,
         drop_last=True,
         pin_memory=False,
     )
@@ -72,24 +91,27 @@ def collate(batch):
 train_loader = DataLoader(dataset=dataset, batch_size=1, shuffle=True, num_workers=0, drop_last=True,
                           collate_fn=None)
 
-
 from torchocr.utils.vis import show_img
 
-
-
 for i, data in enumerate(train_loader):
-
-    # img = data['image']
-    # score_map = data['score_map']
+    img = data['image']
+    cls_weight = data['cls_weight']
+    cls_label = data['cls_label']
+    link_label = data['link_label']
+    link_weight = data['link_weight']
     # geo_map = data['geo_map']
     # training_mask = data['training_mask']
     #
-    # print(img.shape)
-    # print(score_map.shape)
-    # print(geo_map.shape)
-    # print(training_mask.shape)
+    # print(cls_label)
+    print(img.shape)
+    print(cls_weight.shape)
+    print(cls_label.shape)
+    print(link_label.shape)
+    print(link_weight.shape)
     #
-    # show_img(img[0].numpy().transpose(1, 2, 0), title='img')
-    # show_img(score_map[0].numpy().transpose(1, 2, 0), title='score_map')
-    break
+    # show_img((cls_weight[0].numpy()), title='shrink_map')
+    # show_img(cls_label[0].numpy(), title='img')
+    # link_label = link_label.transpose(2, 3).transpose(1, 2)
+    # print(link_label.shape)
 
+    break

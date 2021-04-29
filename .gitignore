@@ -1,4 +1,11 @@
 # Byte-compiled / optimized / DLL files
+
+# myself
+pre_model/*.pth
+docs/icv*
+
+
+
 __pycache__/
 *.py[cod]
 *$py.class
@@ -7,7 +14,8 @@ __pycache__/
 *.so
 .service/*
 .test/*
-.docs/
+.docs/*
+.pre_model/*.pth
 
 # Distribution / packaging
 .Python

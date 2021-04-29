@@ -12,7 +12,6 @@ class BaseModel(nn.Module, metaclass=ABCMeta):
     def __init__(self):
         super(BaseModel, self).__init__()
 
-
     @property
     def with_transform(self):
         """构建neck结构
@@ -37,7 +36,6 @@ class BaseModel(nn.Module, metaclass=ABCMeta):
         """
         return hasattr(self, 'neck') and self.neck is not None
 
-
     @abstractmethod
     def extract_feat(self, img):
         """特征提取，包括backbone+neck
@@ -52,5 +50,6 @@ class BaseModel(nn.Module, metaclass=ABCMeta):
         pass
 
     def init_weights(self, pretrained=None):
-        if pretrained is not None:
-            print('load model from: {}'.format(pretrained))
+        # if pretrained is not None:
+        #     print('load model from: {}'.format(pretrained))
+        pass

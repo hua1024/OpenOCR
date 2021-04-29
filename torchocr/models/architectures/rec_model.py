@@ -38,6 +38,3 @@ class RecognitionModel(BaseModel):
         if self.with_head:
             pred = self.head(pred)
         return pred
-
-    def forward_dummy(self, img):
-        pass

@@ -18,14 +18,14 @@ stride=2，放到第二个1x1卷积
 shortcut层采用avgpool+conv1x1 代替conv1x1
 '''
 
-import torch
 import torch.nn as nn
+import math
 
 from ..builder import BACKBONES
 from .base import BaseBackbone
 
 __all__ = [
-    "ResNetVd"
+    "DetResNetVd"
 ]
 
 
@@ -138,25 +138,22 @@ class DetResNetVd(BaseBackbone):
         200: (BottleneckBlock, (3, 12, 48, 3))
     }
 
-    def __init__(self, depth, in_channels, is_3x3=True, num_classes=1000):
+    def __init__(self, depth, in_channels, num_classes=1000):
         super(DetResNetVd, self).__init__()
         self.in_channels = 64
 
         self.block = self.arch_settings[depth][0]
         self.num_block = self.arch_settings[depth][1]
 
-        if not is_3x3:
-            self.conv1 = ConvBnRelu(in_channels=in_channels, out_channels=64, kernel_size=7, padding=3, stride=2,
-                                    is_relu=True)
-        else:
-            self.conv1 = nn.Sequential(
-                ConvBnRelu(in_channels=in_channels, out_channels=32, kernel_size=3, stride=2, padding=1,
-                           is_relu=True),
-                ConvBnRelu(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1,
-                           is_relu=True),
-                ConvBnRelu(in_channels=32, out_channels=self.in_channels, kernel_size=3, stride=1, padding=1,
-                           is_relu=True)
-            )
+
+        self.conv1 = nn.Sequential(
+            ConvBnRelu(in_channels=in_channels, out_channels=32, kernel_size=3, stride=2, padding=1,
+                       is_relu=True),
+            ConvBnRelu(in_channels=32, out_channels=32, kernel_size=3, stride=1, padding=1,
+                       is_relu=True),
+            ConvBnRelu(in_channels=32, out_channels=self.in_channels, kernel_size=3, stride=1, padding=1,
+                       is_relu=True)
+        )
         self.pool1 = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
 
         self.conv2_x = self._make_layer(block=self.block, out_channels=64, num_blocks=self.num_block[0], stride=1)
@@ -175,13 +172,19 @@ class DetResNetVd(BaseBackbone):
         strides = [stride] + [1] * (num_blocks - 1)
         layers = []
         for idx, _stride in enumerate(strides):
-            # 除了第一层外，后续shortcut都做修改
             layers.append(block(self.in_channels, out_channels, _stride, is_first=stride == 1 and idx == 0))
             self.in_channels = out_channels * block.expansion
         return nn.Sequential(*layers)
 
     def init_weights(self, pretrained=None):
-        pass
+        if pretrained is None:
+            for m in self.modules():
+                if isinstance(m, nn.Conv2d):
+                    n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
+                    m.weight.data.normal_(0, math.sqrt(2. / n))
+                elif isinstance(m, nn.BatchNorm2d):
+                    m.weight.data.fill_(1)
+                    m.bias.data.zero_()
 
     def forward(self, x):
         x = self.conv1(x)
@@ -190,7 +193,4 @@ class DetResNetVd(BaseBackbone):
         c3 = self.conv3_x(c2)
         c4 = self.conv4_x(c3)
         c5 = self.conv5_x(c4)
-        # out = self.avg_pool(x5)
-        # out = out.view(out.size(0), -1)
-        # out = self.fc(out)
         return (c2, c3, c4, c5)

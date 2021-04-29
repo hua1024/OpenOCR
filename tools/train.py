@@ -16,7 +16,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '../'))
 
 from torchocr.utils.config_util import Config
 from torchocr.utils import file_util
-from torchocr.utils.logger import Logging, get_logger
+from torchocr.utils.logger import get_logger
 from torchocr.utils.torch_util import set_random_seed, select_device
 from torchocr.models import build_model
 from torchocr.datasets import build_dataset, build_dataloader
@@ -41,6 +41,7 @@ def parse_args():
         '--deterministic',
         action='store_true',
         help='whether to set deterministic options for CUDNN backend.')
+    parser.add_argument('--ema', action='store_true', help='using EMA')
 
     args = parser.parse_args()
 
@@ -51,13 +52,22 @@ def main():
     args = parse_args()
     cfg_path = args.config
     cfg = Config.fromfile(cfg_path)
-    # 通用配置
-    global_config = cfg.options
+
+    global_config = cfg.options  # 通用配置
+    # local_rank = 0 is logger
     global_config['local_rank'] = args.local_rank
+    # amp train
     if args.amp:
         global_config['is_amp'] = True
     else:
         global_config['is_amp'] = False
+
+    # ema train
+    if args.ema:
+        global_config['is_ema'] = True
+    else:
+        global_config['is_ema'] = False
+
     # set cudnn_benchmark,如数据size一致能加快训练
     if global_config.get('cudnn_benchmark', False):
         torch.backends.cudnn.benchmark = True
@@ -73,7 +83,7 @@ def main():
     log_file = osp.join(global_config.work_dir, '{}.log'.format(timestamp))
     logger = get_logger(name='ocr', log_file=log_file)
 
-    # log env info
+    # # log env info
     if args.local_rank == 0:
         env_info_dict = collect_env()
         env_info = '\n'.join([('{}: {}'.format(k, v))
@@ -85,7 +95,9 @@ def main():
         # set random seeds
         logger.info('Set random seed to {}, deterministic: {}'.format(global_config.seed, args.deterministic))
 
+    # set random seed
     set_random_seed(global_config.seed, deterministic=args.deterministic)
+
     # select device
     # dist init
     if torch.cuda.device_count() > 1 and args.distributed:
@@ -96,32 +108,13 @@ def main():
         global_config.gpu_ids = gpu_ids
         global_config['distributed'] = False
 
-    # build model
-    model = build_model(cfg.model)
-    model = model.to(device)
-
-    # set model to device
-    if device.type != 'cpu' and torch.cuda.device_count() > 1 and global_config['distributed'] == True:
-        model = DDP(model, device_ids=[args.local_rank], output_device=args.local_rank)
-        device = torch.device('cuda', args.local_rank)
-        is_cuda = True
-    elif device.type != 'cpu' and global_config['distributed'] == False and len(gpu_ids) > 1:
-        model = nn.DataParallel(model, device_ids=global_config.gpu_ids)
-        model.gpu_ids = gpu_ids
-        is_cuda = True
-    else:
-        is_cuda = False
-
-    global_config['is_cuda'] = is_cuda
-
-    model.device = device
-
     # build train dataset
     train_dataset = build_dataset(cfg.train_data.dataset)
     train_loader = build_dataloader(train_dataset, loader_cfg=cfg.train_data.loader,
                                     distributed=global_config['distributed'])
 
     # if is eval , build eval dataloader,postprocess,metric
+    # 移动到前面，由于rec-head的输出需要用postprocess计算
     if global_config.is_eval:
         eval_dataset = build_dataset(cfg.test_data.dataset)
         eval_loader = build_dataloader(eval_dataset, loader_cfg=cfg.test_data.loader,
@@ -134,6 +127,31 @@ def main():
         eval_loader = None
         postprocess = None
         metric = None
+
+    # for rec cal head number
+    if hasattr(postprocess, 'character'):
+        char_num = len(getattr(postprocess, 'character'))
+        cfg.model.head.n_class = char_num
+
+    # build model
+    model = build_model(cfg.model)
+    model = model.to(device)
+
+    # set model to device
+    if device.type != 'cpu' and torch.cuda.device_count() > 1 and global_config['distributed'] == True:
+        model = DDP(model, device_ids=[args.local_rank], output_device=args.local_rank)
+        device = torch.device('cuda', args.local_rank)
+        is_cuda = True
+    elif device.type != 'cpu' and global_config['distributed'] == False and len(gpu_ids) >= 1:
+        model = nn.DataParallel(model, device_ids=global_config.gpu_ids)
+        model.gpu_ids = gpu_ids
+        is_cuda = True
+    else:
+        is_cuda = False
+
+    global_config['is_cuda'] = is_cuda
+
+    model.device = device
 
     # build optimizer
     optimizer = build_optimizer(cfg.optimizer, model)

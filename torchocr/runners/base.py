@@ -13,6 +13,7 @@ import os.path as osp
 from abc import abstractmethod
 from torchocr.utils.checkpoints import load_checkpoint
 from ..utils import check, file_util
+from torchocr.models.utils.ema import ModelEMA
 
 
 class BaseRunner(object):
@@ -53,6 +54,11 @@ class BaseRunner(object):
             file_util.mkdir_or_exist(self.work_dir)
         else:
             raise TypeError('"work_dir" must be a str')
+
+        if global_cfg.is_ema:
+            self.ema = self.init_ema()
+        else:
+            self.ema = None
 
         # get model name from the model class
         if hasattr(self.model, 'module'):
@@ -117,6 +123,9 @@ class BaseRunner(object):
                         meta=None,
                         create_symlink=True):
         pass
+
+    def init_ema(self):
+        return ModelEMA(self.model, decay=0.9999, updates=0)
 
     def current_lr(self):
         """Get current learning rates.

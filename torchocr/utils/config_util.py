@@ -118,7 +118,7 @@ class Config(object):
         super(Config, self).__setattr__('_cfg_dict', ConfigDict(cfg_dict))
         super(Config, self).__setattr__('_filename', filename)
         if filename:
-            with open(filename, 'r') as f:
+            with open(filename, 'r',encoding='utf-8') as f:
                 super(Config, self).__setattr__('_text', f.read())
         else:
             super(Config, self).__setattr__('_text', '')

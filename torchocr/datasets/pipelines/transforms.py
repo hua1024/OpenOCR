@@ -68,10 +68,10 @@ class DecodeImage(object):
         try:
             if data is None:
                 return None
-            img = data['image']
-            assert isinstance(img, np.ndarray), 'img not cv2 type'
+            img_path = data['img_path']
+            img = cv2.imread(img_path)
             if self.img_mode == 'GRAY':
-                img = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+                img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             elif self.img_mode == 'RGB':
                 assert img.shape[2] == 3, 'invalid shape of image[%s]' % (img.shape)
                 img = img[:, :, ::-1]  # BGR-->RGB
@@ -94,18 +94,23 @@ class NormalizeImage(object):
         if isinstance(scale, str):
             scale = eval(scale)
         self.scale = np.float32(scale if scale is not None else 1.0 / 255.0)
-        mean = mean if mean is not None else [0.485, 0.456, 0.406]
-        std = std if std is not None else [0.229, 0.224, 0.225]
-
         shape = (3, 1, 1) if order == 'chw' else (1, 1, 3)
         self.mean = np.array(mean).reshape(shape).astype('float32')
         self.std = np.array(std).reshape(shape).astype('float32')
 
+
     def __call__(self, data):
-        img = data['image']
-        data['image'] = (
-                                img.astype('float32') * self.scale - self.mean) / self.std
-        return data
+        try:
+            if data is None:
+                return None
+            img = data['image']
+
+            data['image'] = (img.astype('float32') * self.scale - self.mean) / self.std
+            return data
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None
 
 
 @PIPELINES.register_module()
@@ -117,6 +122,14 @@ class ToCHWImage(object):
         pass
 
     def __call__(self, data):
-        img = data['image']
-        data['image'] = img.transpose((2, 0, 1))
-        return data
+        try:
+            if data is None:
+                return None
+            img = data['image']
+            data['image'] = img.transpose((2, 0, 1))
+            return data
+
+        except Exception as e:
+            file_name = os.path.basename(__file__).split(".")[0]
+            print('{} --> '.format(file_name), e)
+            return None

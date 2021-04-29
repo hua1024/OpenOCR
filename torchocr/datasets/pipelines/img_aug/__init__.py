@@ -3,9 +3,10 @@
 # @Auto   : zzf-jeff
 
 
-from .random_crop import *
-from .resize_img import *
-from .iaa_augment import *
+from .random_crop import EastRandomCropData
+from .iaa_augment import IaaAugment
+from .det_resize_img import DetResizeForTest
+from .rec_resize_img import RecResizeImg
 
 __all__ = [
     'EastRandomCropData',

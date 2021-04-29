@@ -35,9 +35,8 @@ train_pipeline = [
          ]
          ),
     dict(type='EastRandomCropData',
-         size=[1024, 512], max_tries=50, min_crop_side_ratio=0.1, keep_ratio=True),
-    dict(type='MakeBorderMap', shrink_ratio=0.4, thresh_min=0.3, thresh_max=0.7),
-    dict(type='MakeShrinkMap', min_text_size=8, shrink_ratio=0.4),
+         size=[640, 640], max_tries=50, min_crop_side_ratio=0.1, keep_ratio=True),
+    dict(type='C2TDProcessTrain', crop_size=[640, 640], scale=0.25),
     dict(type='NormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     dict(type='ToCHWImage'),
     dict(type='KeepKeys', keep_keys=['image', 'heat_map']),
@@ -46,7 +45,7 @@ train_pipeline = [
 test_pipeline = [
     dict(type='DecodeImage', img_mode='BGR', channel_first=False),
     dict(type='DetLabelEncode', ignore_tags=['*', '###']),
-    dict(type='DetResizeForTest', image_shape=[736, 1280]),
+    dict(type='DetResizeForTest', image_shape=[736, 1280],mode=''),
     dict(type='NormalizeImage', mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     dict(type='ToCHWImage'),
     dict(type='KeepKeys', keep_keys=['image', 'shape', 'polys', 'ignore_tags']),
@@ -54,43 +53,52 @@ test_pipeline = [
 
 train_data = dict(
     dataset=dict(
-        type='DetTextDataset',
-        ann_file=r'/zzf/data/icdar2015/train/train_list.txt',
+        type='DetTextICDAR15',
+        # ann_file=r'/media/newData/user/zzf/data/icdar2015/train/train_list.txt',
+        ann_file=r'/media/newData/user/zzf/data/icdar2015/test/test_list.txt',
         pipeline=train_pipeline,
+        mode='train',
+        data_root=None
     ),
     loader=dict(
-        batch_size=4,
-        num_workers=4,
-        workers_per_gpu=1,
-        shuffle=True,
+        batch_size=8,  # dist时，实际上的gpu应该是number*batch_size
+        num_workers=4,  # dist时，num_workers注意不要超出主机cpu
+        shuffle=True,  # dist，已经在load_data时做了shuffle
         drop_last=True,
         pin_memory=False,
+        collate_fn=None,
     )
 )
 
 test_data = dict(
     dataset=dict(
-        type='DetTextDataset',
-        ann_file=r'/zzf/data/icdar2015/test/test_list.txt',
+        type='DetTextICDAR15',
+        ann_file=r'/media/newData/user/zzf/data/icdar2015/test/test_list.txt',
         pipeline=test_pipeline,
+        mode='test',
+        data_root=None
     ),
     loader=dict(
         batch_size=1,
-        num_workers=4,
-        workers_per_gpu=1,
+        num_workers=0,
         shuffle=False,
         drop_last=True,
         pin_memory=False,
+        collate_fn=None,
     )
 )
 
 # 学习率优化设置 默认StepLR
 # lr_scheduler = dict(type='StepLR', step_size=50, gamma=0.1)
-lr_scheduler = dict(type='CosineWarmup', warm_up_epochs=3, epochs=50)
+lr_scheduler = dict(type='CosineWarmup', warm_up_epochs=3, epochs=800)
 # 优化器设置 默认SGD
-optimizer = dict(type='SGD', lr=0.001, momentum=0.99, weight_decay=5e-4)
+optimizer = dict(type='SGD', lr=0.001, momentum=0.9, weight_decay=1e-4)
 # loss设置
-loss = dict(type='DBLoss')
+loss = dict(
+    type='C2TDLoss',
+    thresh=0.5,
+    neg_pos=3
+)
 # 后处理设置
 postprocess = dict(
     type='DBPostProcess',
@@ -102,12 +110,12 @@ postprocess = dict(
 metric = dict(type='PolygonMetric', main_indicator='hmean')
 
 options = dict(
-    device='0',  # gup ids,
+    gpu_ids='3',  # gup ids,
     total_epochs=800,  # 训练epoch大小,
     work_dir=None,  # 模型保存文件目录，包含日志文件
     load_from=None,  # 用于加载已训练完模型，用于用较低学习率微调网络
     resume_from=None,  # 用于程序以外中断，继续训练
-    is_eval=True,
+    is_eval=False,
     eval_batch_step=[4000, 5000],
     # 验证集配置，根据统计指标计算，默认给保存最好的模型
     checkpoint_interval_epoch=50,  # 模型保存策略，默认每个epoch都保存

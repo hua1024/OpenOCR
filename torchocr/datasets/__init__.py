@@ -8,22 +8,9 @@ from .json_reader import *
 from .builder import (build_dataset, build_dataloader)
 from .pipelines.transforms import *
 from .pipelines.converters.ctc_converter import *
-from .pipelines.img_aug.resize_img import *
+from .pipelines.img_aug.rec_resize_img import *
 from .pipelines.img_aug.iaa_augment import *
 from .pipelines.segment_map.make_border_map import *
 from .pipelines.segment_map.make_shrink_map import *
 from .pipelines.img_aug.random_crop import *
-
-__all__ = [
-    'DATASET', 'build_dataset', 'build_dataloader',
-    'ToTensor', 'Normalize', 'RecResizeImg', 'CTCLabelEncode', 'KeepKeys',
-    'EastRandomCropData',
-    'RecResizeImg',
-    'DetResizeForTest',
-    'IaaAugment',
-    'MakeShrinkMap',
-    'MakeBorderMap',
-    'NormalizeImage',
-    'ToCHWImage',
-    'DetJsonDataset'
-]
+from .pipelines.img_aug.det_resize_img import *

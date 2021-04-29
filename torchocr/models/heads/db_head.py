@@ -38,29 +38,27 @@ class DBHead(nn.Module):
     def _init_upsample(self, in_channels, out_channels, smooth=False):
         pass
 
-    def weights_init(self, m):
-        classname = m.__class__.__name__
-        if classname.find('Conv') != -1:
-            nn.init.kaiming_normal_(m.weight.data)
-        elif classname.find('BatchNorm') != -1:
-            m.weight.data.fill_(1.)
-            m.bias.data.fill_(1e-4)
+    def init_weights(self, pretrained=None):
+        for m in self.modules():
+            if isinstance(m, nn.Conv2d):
+                nn.init.kaiming_normal_(m.weight.data)
+            elif isinstance(m, nn.BatchNorm2d):
+                m.weight.data.fill_(1.)
+                m.bias.data.zero_()
 
     # db公式 B= 1/1+e -k(P-T)
     def step_function(self, x, y):
         return torch.reciprocal(1 + torch.exp(-self.k * (x - y)))
 
     def forward(self, x):
-
         probability_map = self.binarize(x)
         # 推理只采用probability_map
         if not self.training:
-            return probability_map.detach().cpu().numpy()
-
+            # 转onnx不支持np，放到postprocess中
+            # return probability_map.detach().cpu().numpy()
+            return probability_map
         threshold_maps = self.thresh(x)
         binary_map = self.step_function(probability_map, threshold_maps)
         y = torch.cat((probability_map, threshold_maps, binary_map), dim=1)
         return y
-
-
 

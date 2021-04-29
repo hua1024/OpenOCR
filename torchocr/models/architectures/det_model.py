@@ -18,12 +18,17 @@ class DetectionModel(BaseModel):
             self.neck = build_neck(cfg=neck)
         if head is not None:
             self.head = build_head(cfg=head)
+
         self.init_weights(pretrained=pretrained)
 
     def init_weights(self, pretrained=None):
         super(DetectionModel, self).init_weights(pretrained)
-        # 这里关于neck，head的weights还需要考虑
-        self.backbone.init_weights(pretrained=pretrained)
+        if self.training:
+            self.backbone.init_weights(pretrained=pretrained)
+            if self.with_neck:
+                self.neck.init_weights(pretrained=pretrained)
+            if self.with_head:
+                self.head.init_weights(pretrained=pretrained)
 
     def extract_feat(self, img):
         if self.with_transform:
@@ -38,6 +43,3 @@ class DetectionModel(BaseModel):
         if self.with_head:
             pred = self.head(pred)
         return pred
-
-    def forward_dummy(self, img):
-        pass

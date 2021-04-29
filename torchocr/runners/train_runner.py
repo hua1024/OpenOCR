@@ -15,7 +15,11 @@ from ..utils.stats import TrainingStats
 from .base import BaseRunner
 from torchocr.utils.checkpoints import save_checkpoint
 from .test_runner import eval
-from torch.cuda import amp
+
+try:
+    from torch.cuda import amp
+except:
+    print('if use amp torch must more than 1.6.0')
 
 
 class TrainRunner(BaseRunner):
@@ -58,6 +62,7 @@ class TrainRunner(BaseRunner):
 
         log_smooth_window = global_cfg.log_smooth_window
         self.train_stats = TrainingStats(log_smooth_window, ['lr'])
+
         if self.global_cfg.is_amp:
             self.scaler = amp.GradScaler(enabled=self.global_cfg.is_cuda)
 
@@ -77,10 +82,11 @@ class TrainRunner(BaseRunner):
         if self.global_cfg.is_amp:
             with amp.autocast(enabled=self.global_cfg.is_cuda):
                 pred = self.model(data_batch['image'], **kwargs)
+                loss_dict = self.criterion(pred, data_batch)
         else:
             pred = self.model(data_batch['image'], **kwargs)
+            loss_dict = self.criterion(pred, data_batch)
 
-        loss_dict = self.criterion(pred, data_batch)
         # backward
         avg_loss = loss_dict['loss']
         if self.global_cfg.is_amp:
@@ -90,6 +96,11 @@ class TrainRunner(BaseRunner):
         else:
             avg_loss.backward()
             self.optimizer.step()
+
+        # ema model
+        if self.ema is not None:
+            self.ema.update(self.model)
+
         train_batch_cost = time.time() - batch_start
         # info
         lr = self.current_lr()[0]
@@ -113,15 +124,27 @@ class TrainRunner(BaseRunner):
 
         for epoch in range(self.epoch, self._max_epochs):
             for i, data_batch in enumerate(self.train_loader):
-                self._inner_iter = i
+                if i >= len(self.train_loader):
+                    break
                 # batch train
+                # if dist ,DistributedSampler need set epoch to shuffle data
+                if self.global_cfg['distributed']:
+                    self.train_loader.sampler.set_epoch(epoch)
                 self.train_batch(data_batch)
                 # eval
                 if self._iter > self.start_eval_step and \
                         (self._iter - self.start_eval_step) % self.eval_batch_step == 0 \
-                        and self.global_cfg.is_eval:
-                    cur_metirc = eval(self.model, self.eval_loader, self.postprocess,
-                                      self.metric)
+                        and self.global_cfg.is_eval and self.global_cfg['local_rank'] == 0:
+
+                    if self.ema is not None:
+                        model = self.ema.ema.module if hasattr(self.ema, 'module') else self.ema.ema
+                        # get model device to test
+                        model.device = self.model.device
+                        cur_metirc = eval(model, self.eval_loader, self.postprocess,
+                                          self.metric)
+                    else:
+                        cur_metirc = eval(self.model, self.eval_loader, self.postprocess,
+                                          self.metric)
                     cur_metirc_str = 'cur metirc, {}'.format(', '.join(
                         ['{}: {}'.format(k, v) for k, v in cur_metirc.items()]))
                     self.logger_info(cur_metirc_str)
@@ -130,11 +153,11 @@ class TrainRunner(BaseRunner):
                         self.meta[self.main_indicator] = cur_metirc[self.main_indicator]
                         self.meta['best_epoch'] = epoch
                         self.save_checkpoint(self.work_dir, filename_tmpl='best.pth')
-
             # end batch
             self.lr_scheduler.step()
             self._epoch += 1
-            if (self._epoch + 1) % self.global_cfg.checkpoint_interval_epoch == 0:
+            if (self._epoch + 1) % self.global_cfg.checkpoint_interval_epoch == 0 or \
+                    (self._epoch + 1) == self.global_cfg.total_epochs:
                 self.save_checkpoint(self.work_dir)
 
     def save_checkpoint(self, out_dir, filename_tmpl='epoch_{}.pth', save_optimizer=True,
@@ -154,27 +177,33 @@ class TrainRunner(BaseRunner):
                 "latest.pth" to point to the latest checkpoint.
                 Defaults to True.
         """
+        if self.global_cfg['local_rank'] == 0:
+            if meta is None:
+                meta = dict(epoch=self.epoch, iter=self.iter)
+            elif isinstance(meta, dict):
+                meta.update(epoch=self.epoch, iter=self.iter)
+            else:
+                raise TypeError('meta should be a dict or None, but got {}'.format(type(meta)))
+            if self.meta is not None:
+                meta.update(self.meta)
+            filename = filename_tmpl.format(self.epoch)
+            filepath = osp.join(out_dir, filename)
+            optimizer = self.optimizer if save_optimizer else None
 
-        if meta is None:
-            meta = dict(epoch=self.epoch, iter=self.iter)
-        elif isinstance(meta, dict):
-            meta.update(epoch=self.epoch, iter=self.iter)
-        else:
-            raise TypeError('meta should be a dict or None, but got {}'.format(type(meta)))
-        if self.meta is not None:
-            meta.update(self.meta)
-        filename = filename_tmpl.format(self.epoch)
-        filepath = osp.join(out_dir, filename)
-        optimizer = self.optimizer if save_optimizer else None
-        save_checkpoint(self.model, filepath, optimizer=optimizer, meta=meta)
-        # in some environments, `os.symlink` is not supported, you may need to
-        # set `create_symlink` to False
-        try:
-            if create_symlink:
-                dst_file = osp.join(out_dir, 'latest.pth')
-                if platform.system() != 'Windows':
-                    path_util.symlink(filename, dst_file)
-                else:
-                    shutil.copy(filepath, dst_file)
-        except:
-            self.logger.warning('create_symlink failed')
+            if self.ema is not None:
+                model = self.ema.ema.module if hasattr(self.ema, 'module') else self.ema.ema
+                save_checkpoint(model, filepath, optimizer=optimizer, meta=meta)
+            else:
+                save_checkpoint(self.model, filepath, optimizer=optimizer, meta=meta)
+
+            # in some environments, `os.symlink` is not supported, you may need to
+            # set `create_symlink` to False
+            try:
+                if create_symlink:
+                    dst_file = osp.join(out_dir, 'latest.pth')
+                    if platform.system() != 'Windows':
+                        path_util.symlink(filename, dst_file)
+                    else:
+                        shutil.copy(filepath, dst_file)
+            except:
+                self.logger.warning('create_symlink failed')
