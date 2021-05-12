@@ -14,6 +14,7 @@ from abc import abstractmethod
 from torchocr.utils.checkpoints import load_checkpoint
 from ..utils import check, file_util
 from torchocr.models.utils.ema import ModelEMA
+import os
 
 
 class BaseRunner(object):
@@ -59,6 +60,12 @@ class BaseRunner(object):
             self.ema = self.init_ema()
         else:
             self.ema = None
+
+        if global_cfg.is_tb:
+            from tensorboardX import SummaryWriter
+            self.tb_writer = SummaryWriter(os.path.join(self.work_dir, 'tf_logs'))
+        else:
+            self.tb_writer = None
 
         # get model name from the model class
         if hasattr(self.model, 'module'):

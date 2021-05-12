@@ -76,7 +76,6 @@ class TrainRunner(BaseRunner):
         batch_start = time.time()
         # 数据加载进device
         self.set_input(data_batch)
-
         self.optimizer.zero_grad()
         # forward
         if self.global_cfg.is_amp:
@@ -108,6 +107,12 @@ class TrainRunner(BaseRunner):
         stats = {k: v for k, v in log_vars.items()}
         stats['lr'] = lr
         self.train_stats.update(stats)
+
+        # set info to tensorboard
+        if self.tb_writer is not None:
+            self.tb_writer.add_scalar('Train/Lr', lr, self._iter)
+            for k, v in log_vars.items():
+                self.tb_writer.add_scalar('Train/Loss/{}'.format(k), v, self._iter)
 
         if self._iter > 0 and self._iter % self.global_cfg.print_batch_step == 0:
             logs = self.train_stats.log()
@@ -149,6 +154,11 @@ class TrainRunner(BaseRunner):
                         ['{}: {}'.format(k, v) for k, v in cur_metirc.items()]))
                     self.logger_info(cur_metirc_str)
 
+                    # set info to tensorboard
+                    if self.tb_writer is not None:
+                        for k, v in cur_metirc.items():
+                            self.tb_writer.add_scalar('Valid/{}'.format(k), v, epoch)
+
                     if cur_metirc[self.main_indicator] >= self.meta[self.main_indicator]:
                         self.meta[self.main_indicator] = cur_metirc[self.main_indicator]
                         self.meta['best_epoch'] = epoch
@@ -159,6 +169,11 @@ class TrainRunner(BaseRunner):
             if (self._epoch + 1) % self.global_cfg.checkpoint_interval_epoch == 0 or \
                     (self._epoch + 1) == self.global_cfg.total_epochs:
                 self.save_checkpoint(self.work_dir)
+
+        # finish train
+        # close tensorboard
+        if self.tb_writer:
+            self.tb_writer.close()
 
     def save_checkpoint(self, out_dir, filename_tmpl='epoch_{}.pth', save_optimizer=True,
                         meta=None, create_symlink=True):
