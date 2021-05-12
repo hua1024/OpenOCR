@@ -7,6 +7,7 @@ import torch
 import numpy as np
 import os
 
+
 ## todo:decode是否放在后处理部分会好一点
 @PIPELINES.register_module()
 class CTCLabelEncode(BaseEncodeConverter):
@@ -62,7 +63,9 @@ class CTCLabelEncode(BaseEncodeConverter):
             text = data['label']
             text = self.encode(text)
             if text is None:
+                print('Label is not in rec-key')
                 return None
+
             data['length'] = np.array(len(text))
             text = text + [0] * (self.max_text_len - len(text))
             data['label'] = np.array(text)
