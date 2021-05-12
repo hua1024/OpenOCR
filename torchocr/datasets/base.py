@@ -24,6 +24,8 @@ class BaseDataset(Dataset, metaclass=ABCMeta):
         """
         super().__init__()
 
+
+
         self.ann_file = ann_file
         self.pipeline = Compose(pipeline)
         self.mode = mode

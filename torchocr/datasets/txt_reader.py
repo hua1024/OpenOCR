@@ -14,10 +14,14 @@ from tqdm import tqdm
 @DATASET.register_module()
 class DetTextICDAR15(BaseDataset, metaclass=ABCMeta):
     def __init__(self, ann_file, pipeline, mode, data_root, **kwargs):
+        if 'split_type' in kwargs:
+            self.split_type = kwargs['split_type']
+        else:
+            self.split_type = ','
         super().__init__(ann_file, pipeline, mode, data_root, **kwargs)
 
     def load_annotations(self, ann_file):
-        infos = self.read_txt(ann_file)
+        infos = self.read_txt(ann_file, self.split_type)
         data_infos = []
         for (img_path, gt_path) in tqdm(infos):
             labels, texts = self.get_bboxs(gt_path)
@@ -42,7 +46,7 @@ class DetTextICDAR15(BaseDataset, metaclass=ABCMeta):
                 texts.append(gt[8:])
             return labels, texts
 
-    def read_txt(self, txt_path):
+    def read_txt(self, txt_path, split_type):
         '''
         读取txt文件的标注信息，格式为
         xxx/a/1.png,a
@@ -53,17 +57,21 @@ class DetTextICDAR15(BaseDataset, metaclass=ABCMeta):
             imgs：list, all data info
         '''
         with open(txt_path, 'r', encoding='utf-8') as f:
-            infos = list(map(lambda line: line.strip().split(','), f))
+            infos = list(map(lambda line: line.strip().split(split_type), f))
         return infos
 
 
 @DATASET.register_module()
 class DetTextDataset(BaseDataset, metaclass=ABCMeta):
     def __init__(self, ann_file, pipeline, mode, data_root, **kwargs):
+        if 'split_type' in kwargs:
+            self.split_type = kwargs['split_type']
+        else:
+            self.split_type = ','
         super().__init__(ann_file, pipeline, mode, data_root, **kwargs)
 
     def load_annotations(self, ann_file):
-        infos = self.read_txt(ann_file)
+        infos = self.read_txt(ann_file, self.split_type)
         data_infos = []
         for (img_path, gt_path) in tqdm(infos):
             if self.data_root:
@@ -74,7 +82,7 @@ class DetTextDataset(BaseDataset, metaclass=ABCMeta):
             data_infos.append({'img_path': img_path, 'label': labels, 'text': texts})
         return data_infos
 
-    def get_bboxs(self, gt_path, is_voc=False):
+    def get_bboxs(self, gt_path):
         labels = []
         texts = []
         with open(gt_path, 'r', encoding='utf-8') as fr:
@@ -86,7 +94,7 @@ class DetTextDataset(BaseDataset, metaclass=ABCMeta):
                 texts.append(['ocr'])
             return labels, texts
 
-    def read_txt(self, txt_path):
+    def read_txt(self, txt_path, split_type):
         '''
         读取txt文件的标注信息，格式为
         xxx/a/1.png,a
@@ -97,18 +105,21 @@ class DetTextDataset(BaseDataset, metaclass=ABCMeta):
             imgs：list, all data info
         '''
         with open(txt_path, 'r', encoding='utf-8') as f:
-            infos = list(map(lambda line: line.strip().split(','), f))
+            infos = list(map(lambda line: line.strip().split(split_type), f))
         return infos
 
 
 @DATASET.register_module()
 class RecTextDataset(BaseDataset, metaclass=ABCMeta):
     def __init__(self, ann_file, pipeline, mode, data_root, **kwargs):
+        if 'split_type' in kwargs:
+            self.split_type = kwargs['split_type']
+        else:
+            self.split_type = ' '
         super().__init__(ann_file, pipeline, mode, data_root, **kwargs)
 
     def load_annotations(self, ann_file):
-        infos = self.read_txt(ann_file)
-
+        infos = self.read_txt(ann_file, self.split_type)
         data_infos = []
         for info in tqdm(infos):
             if len(info) != 2:
@@ -116,11 +127,10 @@ class RecTextDataset(BaseDataset, metaclass=ABCMeta):
             img_path, label = info[0], info[1]
             if self.data_root:
                 img_path = os.path.join(self.data_root, img_path)
-
             data_infos.append({'img_path': img_path, 'label': label})
         return data_infos
 
-    def read_txt(self, txt_path):
+    def read_txt(self, txt_path, split_type):
         '''
         读取txt文件的标注信息，格式为
         xxx/a/1.png,a
@@ -131,5 +141,31 @@ class RecTextDataset(BaseDataset, metaclass=ABCMeta):
             imgs：list, all data info
         '''
         with open(txt_path, 'r', encoding='utf-8') as f:
-            infos = list(map(lambda line: line.strip().split(' ',1), f))
+            infos = list(map(lambda line: line.strip().split(split_type, 1), f))
         return infos
+
+
+@DATASET.register_module()
+class AyxRecTextDataset(RecTextDataset):
+
+    def load_annotations(self, ann_file):
+        data_infos = []
+        infos = super(AyxRecTextDataset, self).read_txt(ann_file, self.split_type)
+        for info in infos:
+            txt_file, use_flag = info
+            if int(use_flag) == 1:
+                data_infos += super(AyxRecTextDataset, self).load_annotations(txt_file)
+        return data_infos
+
+
+@DATASET.register_module()
+class AyxDetTextDataset(DetTextDataset):
+
+    def load_annotations(self, ann_file):
+        data_infos = []
+        infos = super(AyxDetTextDataset, self).read_txt(ann_file, self.split_type)
+        for info in infos:
+            txt_file, use_flag = info
+            if int(use_flag) == 1:
+                data_infos += super(AyxDetTextDataset, self).load_annotations(txt_file)
+        return data_infos
