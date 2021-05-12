@@ -31,18 +31,15 @@ The ocr detect icdar2015 results should be as follows:
 |:------------------:	|:---------:	|:------:	|:---------:	|:-----------------:	|:--------------:	|:-----------------:	|
 | DBNet-r50 	|    88.9   	|  77.6  	|    82.9   	|        88.3       	|      77.9      	|        82.8       	|
 
-The ocr recognition origin data results should be as follows:
-
-|        Model       	| precision(ours) 	| norm_edit_dis(ours) 	| F-precision(origin) 	| norm_edit_dis (paper) 	|
-|:------------------:	|:---------:	|:------:	|:---------:	|:-----------------:	|
-| CRNN-r50-2lstm 	|    88.9   	|  77.6  	|    82.9   	|        88.3       	|
-
 
 ## TRT加速效果
+<https://github.com/hua1024/OpenDeploy>
 
 
-### reference
+### Reference
     1.https://github.com/open-mmlab/mmdetection
     2.https://github.com/PaddlePaddle/PaddleOCR
+    3.https://github.com/BADBADBADBOY/pytorchOCR
+    
 > If this repository helps you，please star it. Thanks.
 
