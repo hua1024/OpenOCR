@@ -49,7 +49,6 @@ class BaseDecodeConverter(metaclass=ABCMeta):
             self.dict[char] = i
         self.character = dict_character
 
-
     def add_special_char(self, dict_character):
         dict_character = ['blank'] + dict_character
         return dict_character
@@ -103,7 +102,7 @@ class CTCLabelDecode(BaseDecodeConverter):
             text = ''.join(char_list)
             # if result is '',np.mean([]) will be warning set nan
             conf_mean = np.mean(conf_list) if text else 1.0
-            result_list.append((text, conf_mean))
+            result_list.append((text, conf_mean,conf_list))
         return result_list
 
     def __call__(self, preds, batch=None, *args, **kwargs):
@@ -141,7 +140,7 @@ class AttnLabelDecode(BaseDecodeConverter):
                  use_space_char=False,
                  **kwargs):
         super(AttnLabelDecode, self).__init__(character_dict_path,
-                                             character_type, use_space_char)
+                                              character_type, use_space_char)
 
         self.beg_str = "sos"
         self.end_str = "eos"
@@ -202,8 +201,8 @@ class AttnLabelDecode(BaseDecodeConverter):
             # if result is '',np.mean([]) will be warning set nan
             conf_mean = np.mean(conf_list) if text else 1.0
             result_list.append((text, conf_mean))
-        return result_list
 
+        return result_list
 
     def __call__(self, preds, batch=None, *args, **kwargs):
         """Recognition postprocess

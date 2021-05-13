@@ -7,6 +7,7 @@ import Levenshtein
 import numpy as np
 from .builder import METRICS
 
+
 @METRICS.register_module()
 class RecMetric(object):
     def __init__(self, main_indicator='acc', **kwargs):
@@ -20,7 +21,7 @@ class RecMetric(object):
         char_num = 0
 
         norm_edit_dis = 0.0
-        for (pred, pred_conf), (target, _) in zip(preds, labels):
+        for (pred, pred_conf, pred_conf_list), (target, _) in zip(preds, labels):
             norm_edit_dis += Levenshtein.distance(pred, target) / max(
                 len(pred), len(target))
             if pred == target:
