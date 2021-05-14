@@ -19,9 +19,9 @@ class RecMetric(object):
         correct_num = 0
         all_num = 0
         char_num = 0
-
         norm_edit_dis = 0.0
-        for (pred, pred_conf, pred_conf_list), (target, _) in zip(preds, labels):
+
+        for (pred, pred_conf, pred_conf_list), (target, _, _) in zip(preds, labels):
             norm_edit_dis += Levenshtein.distance(pred, target) / max(
                 len(pred), len(target))
             if pred == target:
