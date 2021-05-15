@@ -144,7 +144,7 @@ def main():
     from torchocr.utils.checkpoints import load_checkpoint, save_checkpoint
 
     cfg_path = 'config/det/dbnet/61_hw_repb2_dbnet.py'
-    model_path = 'work_dirs/61_hw_repb2_dbnet/best.pth'
+    model_path = 'work_dirs/61_hw_repb2_dbnet/det.pth'
 
     cfg = Config.fromfile(cfg_path)
     cfg.model.pretrained = None
